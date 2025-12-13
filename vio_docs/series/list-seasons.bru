@@ -1,0 +1,16 @@
+meta {
+  name: list-seasons
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{series_path}}/2/seasons
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

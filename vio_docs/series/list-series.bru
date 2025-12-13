@@ -1,0 +1,16 @@
+meta {
+  name: list-series
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{series_path}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

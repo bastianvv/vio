@@ -1,0 +1,246 @@
+openapi: 3.0.0
+info:
+  title: vio
+  version: 1.0.0
+paths:
+  /api/libraries:
+    get:
+      summary: list-libraries
+      operationId: list-libraries
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/list-libraries.bru
+      responses:
+        '200':
+          description: ''
+    post:
+      summary: create-library
+      operationId: create-library
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/create-library.bru
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+      requestBody:
+        $ref: '#/components/requestBodies/create-library'
+  /api/libraries/2:
+    put:
+      summary: update-library
+      operationId: update-library
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/update-library.bru
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: Content-Type
+          in: header
+          description: ''
+          required: true
+          example: application/json
+      requestBody:
+        $ref: '#/components/requestBodies/update-library'
+  /api/libraries/1:
+    get:
+      summary: get-library
+      operationId: get-library
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/get-library.bru
+      responses:
+        '200':
+          description: ''
+  /api/libraries/1/scan:
+    post:
+      summary: scan
+      operationId: scan
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/scan.bru
+      responses:
+        '200':
+          description: ''
+  /api/libraries/1/rescan:
+    post:
+      summary: rescan
+      operationId: rescan
+      description: ''
+      tags:
+        - vio/vio_docs/libraries/rescan.bru
+      responses:
+        '200':
+          description: ''
+  /api/episodes/1:
+    get:
+      summary: get-episode
+      operationId: get-episode
+      description: ''
+      tags:
+        - vio/vio_docs/episodes/get-episode.bru
+      responses:
+        '200':
+          description: ''
+  /api/files/1/stream:
+    get:
+      summary: stream-file
+      operationId: stream-file
+      description: ''
+      tags:
+        - vio/vio_docs/files/stream-file.bru
+      responses:
+        '200':
+          description: ''
+  /api/files/1:
+    get:
+      summary: get-file
+      operationId: get-file
+      description: ''
+      tags:
+        - vio/vio_docs/files/get-file.bru
+      responses:
+        '200':
+          description: ''
+  /api/movies/1:
+    get:
+      summary: get-movie
+      operationId: get-movie
+      description: ''
+      tags:
+        - vio/vio_docs/movies/get-movie.bru
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: library_id
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/movies/1/files:
+    get:
+      summary: list-movie-files
+      operationId: list-movie-files
+      description: ''
+      tags:
+        - vio/vio_docs/movies/list-movie-files.bru
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: library_id
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/movies:
+    get:
+      summary: list-movies
+      operationId: list-movies
+      description: ''
+      tags:
+        - vio/vio_docs/movies/list-movies.bru
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: library_id
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/series/2:
+    get:
+      summary: get-series
+      operationId: get-series
+      description: ''
+      tags:
+        - vio/vio_docs/series/get-series.bru
+      responses:
+        '200':
+          description: ''
+  /api/series/2/seasons:
+    get:
+      summary: list-seasons
+      operationId: list-seasons
+      description: ''
+      tags:
+        - vio/vio_docs/series/list-seasons.bru
+      responses:
+        '200':
+          description: ''
+  /api/series:
+    get:
+      summary: list-series
+      operationId: list-series
+      description: ''
+      tags:
+        - vio/vio_docs/series/list-series.bru
+      responses:
+        '200':
+          description: ''
+  /api/seasons/3:
+    get:
+      summary: get-season
+      operationId: get-season
+      description: ''
+      tags:
+        - vio/vio_docs/seasons/get-season.bru
+      responses:
+        '200':
+          description: ''
+  /api/seasons/4/episodes:
+    get:
+      summary: list-episodes
+      operationId: list-episodes
+      description: ''
+      tags:
+        - vio/vio_docs/seasons/list-episodes.bru
+      responses:
+        '200':
+          description: ''
+servers:
+  - url: http://localhost:8080
+components:
+  schemas:
+    create-library:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        path:
+          type: string
+    update-library:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        path:
+          type: string
+  requestBodies:
+    create-library:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/create-library'
+      description: ''
+      required: true
+    update-library:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/update-library'
+      description: ''
+      required: true
+  securitySchemes: {}

@@ -1,0 +1,16 @@
+meta {
+  name: get-season
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{seasons_path}}/3
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,16 @@
+meta {
+  name: list-episodes
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{seasons_path}}/4/episodes
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

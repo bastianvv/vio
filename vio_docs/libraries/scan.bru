@@ -1,0 +1,16 @@
+meta {
+  name: scan
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}{{api_path}}{{libraries_path}}/1/scan
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

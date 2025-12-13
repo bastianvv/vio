@@ -1,0 +1,16 @@
+meta {
+  name: get-episode
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{episodes_path}}/1
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

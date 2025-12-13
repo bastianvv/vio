@@ -1,0 +1,16 @@
+meta {
+  name: rescan
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}{{api_path}}{{libraries_path}}/1/rescan
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

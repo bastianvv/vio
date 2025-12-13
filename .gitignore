@@ -1,0 +1,43 @@
+# =========================
+# Go build artifacts
+# =========================
+/server
+*.exe
+*.out
+*.test
+
+# =========================
+# Databases / runtime state
+# =========================
+vio.db
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Logs & temp files
+# =========================
+*.log
+tmp/
+.temp/
+
+# =========================
+# Test / coverage output
+# =========================
+coverage.out
+coverage.html
+
+# =========================
+# Editor / IDE
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db

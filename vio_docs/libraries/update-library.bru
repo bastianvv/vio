@@ -1,0 +1,28 @@
+meta {
+  name: update-library
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}{{api_path}}{{libraries_path}}/2
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Movies 2",
+    "type": "MOVIES",
+    "path": "/home/user/NAS/Media/movies"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
