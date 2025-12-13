@@ -32,6 +32,14 @@ It currently focuses on library indexing, metadata modeling, and filesystem corr
 
 The API will be available at: http://localhost:8080
 
+## Architecture & Stability
+
+Core data invariants, lifecycle rules, and API stability guarantees are documented in:
+
+- `docs/architecture.md`
+
+These rules define what **must never break** in VIO.
+
 ## Dev Note
 This project is currently being developed using a mix between traditional programming and AI-assisted development (ChatGPT).
 I work in QA and do not have a formal background in backend or functional programming, so this project is as much about learning as it is about building something useful, with a strong focus on correctness, edge cases, and repeatable testing.
