@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "vio_docs",
+  "name": "vio-ref",
   "type": "collection",
   "ignore": [
     "node_modules",
