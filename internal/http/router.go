@@ -45,6 +45,7 @@ func NewRouter(s store.Store) http.Handler {
 
 	// ---- Episodes ----
 	r.Get("/api/episodes/{id}", episodesHandler.GetEpisode)
+	r.Get("/api/episodes/{id}/files", episodesHandler.ListEpisodeFiles)
 
 	// ---- Files ----
 	r.Get("/api/files/{id}", filesHandler.GetFile)

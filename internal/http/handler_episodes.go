@@ -49,3 +49,25 @@ func (h *EpisodesHandler) ListEpisodesBySeason(w http.ResponseWriter, r *http.Re
 
 	writeJSON(w, out)
 }
+
+func (h *EpisodesHandler) ListEpisodeFiles(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	episodeID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid episode id", http.StatusBadRequest)
+		return
+	}
+
+	files, err := h.store.ListMediaFilesByEpisode(episodeID)
+	if err != nil {
+		http.Error(w, "failed to list episode files", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]*dto.MediaFile, 0, len(files))
+	for i := range files {
+		out = append(out, dto.NewMediaFile(&files[i]))
+	}
+
+	writeJSON(w, out)
+}

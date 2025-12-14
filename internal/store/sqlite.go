@@ -59,7 +59,7 @@ func (s *SQLiteStore) WithTx(fn func(tx Store) error) error {
 	_, _ = tx.Exec(`PRAGMA foreign_keys = ON;`)
 
 	txStore := &SQLiteStore{
-		db:   nil, 
+		db:   nil,
 		exec: tx,
 	}
 
@@ -652,6 +652,8 @@ func (s *SQLiteStore) CreateMediaFile(mf *domain.MediaFile) error {
 	res, err := s.exec.Exec(`
 		INSERT INTO media_files (
 		    library_id,
+		    movie_id,
+		    episode_id,
 		    path,
 		    size_bytes,
 		    hash,
@@ -667,9 +669,11 @@ func (s *SQLiteStore) CreateMediaFile(mf *domain.MediaFile) error {
 		    duration_sec,
 		    created_at,
 		    updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		mf.LibraryID,
+		mf.MovieID,
+		mf.EpisodeID,
 		mf.Path,
 		mf.SizeBytes,
 		mf.Hash,
@@ -880,6 +884,8 @@ func (s *SQLiteStore) GetMediaFileByPath(path string) (*domain.MediaFile, error)
 func (s *SQLiteStore) UpdateMediaFile(mf *domain.MediaFile) error {
 	const q = `
 	UPDATE media_files SET
+	    movie_id = ?,
+	    episode_id = ?,
 	    size_bytes = ?,
 	    hash = ?,
 	    container = ?,
@@ -898,6 +904,8 @@ func (s *SQLiteStore) UpdateMediaFile(mf *domain.MediaFile) error {
 
 	_, err := s.exec.Exec(
 		q,
+		mf.MovieID,
+		mf.EpisodeID,
 		mf.SizeBytes,
 		mf.Hash,
 		mf.Container,
@@ -1063,16 +1071,18 @@ func (s *SQLiteStore) CleanupEmptyEpisodes(libraryID int64) (int64, error) {
 	const q = `
 	DELETE FROM episodes
 	WHERE id IN (
-		SELECT e.id
-		FROM episodes e
-		JOIN seasons s ON s.id = e.season_id
-		JOIN series sr ON sr.id = s.series_id
-		LEFT JOIN media_files mf
-			ON mf.episode_id = e.id
-			AND mf.is_missing = 0
-		WHERE sr.library_id = ?
-		GROUP BY e.id
-		HAVING COUNT(mf.id) = 0
+	    SELECT e.id
+	    FROM episodes e
+	    JOIN seasons s ON s.id = e.season_id
+	    JOIN series sr ON sr.id = s.series_id
+	    LEFT JOIN media_file_episodes mfe
+	        ON mfe.episode_id = e.id
+	    LEFT JOIN media_files mf
+	        ON mf.id = mfe.media_file_id
+	        AND mf.is_missing = 0
+	    WHERE sr.library_id = ?
+	    GROUP BY e.id
+	    HAVING COUNT(mf.id) = 0
 	)
 	`
 	res, err := s.exec.Exec(q, libraryID)
