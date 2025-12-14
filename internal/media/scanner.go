@@ -1,7 +1,6 @@
 package media
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -78,7 +77,7 @@ func (s *FSScanner) ScanLibrary(lib *domain.Library, mode ScanMode) (*ScanResult
 	walkErr := filepath.WalkDir(lib.Path, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			result.Errors = append(result.Errors, err)
-			return nil // continue scan
+			return nil
 		}
 		if d.IsDir() {
 			return nil
@@ -91,9 +90,20 @@ func (s *FSScanner) ScanLibrary(lib *domain.Library, mode ScanMode) (*ScanResult
 
 		result.FilesScanned++
 
-		if err := s.processVideoFile(lib, mode, path, scanStartedAt, result); err != nil {
+		err = s.store.WithTx(func(tx store.Store) error {
+			return s.processVideoFileTx(
+				tx,
+				lib,
+				mode,
+				path,
+				scanStartedAt,
+				result,
+			)
+		})
+		if err != nil {
 			result.Errors = append(result.Errors, err)
 		}
+
 		return nil
 	})
 
@@ -101,31 +111,31 @@ func (s *FSScanner) ScanLibrary(lib *domain.Library, mode ScanMode) (*ScanResult
 		return result, nil
 	}
 
-	if _, err := s.store.MarkMissingMediaFiles(lib.ID, scanStartedAt); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
-	if n, err := s.store.UnlinkMissingMediaFiles(lib.ID); err != nil {
-		result.Errors = append(result.Errors, err)
-	} else {
-		log.Printf("Unlinked %d missing media files", n)
-	}
-	if _, err := s.store.CleanupMissingMediaFileLinks(lib.ID); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
-	if _, err := s.store.CleanupEmptyEpisodes(lib.ID); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
-	if _, err := s.store.CleanupEmptySeasons(lib.ID); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
-	if _, err := s.store.CleanupEmptySeries(lib.ID); err != nil {
-		result.Errors = append(result.Errors, err)
-	}
+	// ONE cleanup pass, ONE transaction
+	_ = s.store.WithTx(func(tx store.Store) error {
+		if _, err := tx.MarkMissingMediaFiles(lib.ID, scanStartedAt); err != nil {
+			return err
+		}
+		if _, err := tx.UnlinkMissingMediaFiles(lib.ID); err != nil {
+			return err
+		}
+		if _, err := tx.CleanupEmptyEpisodes(lib.ID); err != nil {
+			return err
+		}
+		if _, err := tx.CleanupEmptySeasons(lib.ID); err != nil {
+			return err
+		}
+		if _, err := tx.CleanupEmptySeries(lib.ID); err != nil {
+			return err
+		}
+		return nil
+	})
 
 	return result, walkErr
 }
 
-func (s *FSScanner) processVideoFile(
+func (s *FSScanner) processVideoFileTx(
+	tx store.Store,
 	lib *domain.Library,
 	mode ScanMode,
 	path string,
@@ -133,38 +143,32 @@ func (s *FSScanner) processVideoFile(
 	result *ScanResult,
 ) error {
 
-	//FIRST: check if already indexed
-	existingMF, err := s.store.GetMediaFileByPath(path)
+	// Check existing media file
+	existingMF, err := tx.GetMediaFileByPath(path)
 	if err != nil {
 		return err
 	}
 
-	// Incremental scan: already indexed → skip immediately
 	if existingMF != nil && mode == ScanModeIncremental {
-		return s.store.MarkMediaFileSeen(existingMF.ID, scanStartedAt)
+		return tx.MarkMediaFileSeen(existingMF.ID, scanStartedAt)
 	}
 
-	// Stat is cheap
 	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
 
-	// Hash ONLY if needed
 	var hash string
 	if mode == ScanModeRescan && existingMF != nil {
 		hash, err = util.HashFile(path)
 		if err != nil {
 			return err
 		}
-
-		// unchanged → skip everything else
 		if existingMF.Hash == hash {
-			return s.store.MarkMediaFileSeen(existingMF.ID, scanStartedAt)
+			return tx.MarkMediaFileSeen(existingMF.ID, scanStartedAt)
 		}
 	}
 
-	// New file OR changed file → hash if not done yet
 	if hash == "" {
 		hash, err = util.HashFile(path)
 		if err != nil {
@@ -172,7 +176,6 @@ func (s *FSScanner) processVideoFile(
 		}
 	}
 
-	// ffprobe ONLY when we know we need metadata
 	ffdata, err := RunFFProbe(path)
 	if err != nil {
 		return err
@@ -199,14 +202,10 @@ func (s *FSScanner) processVideoFile(
 		switch st.CodecType {
 		case "video":
 			videoCodec = st.CodecName
-			if st.Width > 0 && st.Height > 0 {
-				width, height = st.Width, st.Height
-			}
+			width, height = st.Width, st.Height
 		case "audio":
 			audioCodec = st.CodecName
-			if st.Channels > 0 {
-				audioChannels = st.Channels
-			}
+			audioChannels = st.Channels
 		}
 	}
 
@@ -217,7 +216,6 @@ func (s *FSScanner) processVideoFile(
 		Hash:          hash,
 		LastSeenAt:    &scanStartedAt,
 		IsMissing:     false,
-		MissingSince:  nil,
 		Container:     container,
 		VideoCodec:    videoCodec,
 		AudioCodec:    audioCodec,
@@ -227,7 +225,6 @@ func (s *FSScanner) processVideoFile(
 		DurationSec:   durationSec,
 	}
 
-	// Preserve ID on rescan
 	if existingMF != nil {
 		mf.ID = existingMF.ID
 	}
@@ -236,7 +233,7 @@ func (s *FSScanner) processVideoFile(
 
 	switch lib.Type {
 	case domain.LibraryTypeMovies:
-		ar, err := s.attachMovie(lib, mf)
+		ar, err := s.attachMovieTx(tx, lib, mf)
 		if err != nil {
 			return err
 		}
@@ -245,57 +242,43 @@ func (s *FSScanner) processVideoFile(
 		}
 
 	case domain.LibraryTypeSeries, domain.LibraryTypeAnime:
-		eps, ar, err := s.attachSeriesEpisode(lib, mf)
+		eps, ar, err := s.attachSeriesEpisodeTx(tx, lib, mf)
 		if err != nil {
 			return err
 		}
-
 		if ar.SeriesCreated {
 			result.SeriesAdded++
 		}
 		result.EpisodesAdded += ar.EpisodesCreated
-
 		episodes = eps
-		if len(episodes) > 0 {
-			id := episodes[0].ID
-			mf.EpisodeID = &id
+		if len(eps) > 0 {
+			mf.EpisodeID = &eps[0].ID
 		}
 	}
 
-	// Store ONCE
 	now := time.Now().UTC()
-
 	if mf.ID == 0 {
 		mf.CreatedAt = now
-	}
-	mf.UpdatedAt = now
-
-	if mf.ID == 0 {
-		err = s.store.CreateMediaFile(mf)
+		err = tx.CreateMediaFile(mf)
 	} else {
-		err = s.store.UpdateMediaFile(mf)
+		mf.UpdatedAt = now
+		err = tx.UpdateMediaFile(mf)
 	}
 	if err != nil {
 		return err
 	}
 
-	// Link episodes
 	for _, ep := range episodes {
 		link := &domain.MediaFileEpisode{
 			MediaFileID: mf.ID,
 			EpisodeID:   ep.ID,
 		}
-		if err := s.store.CreateMediaFileEpisode(link); err != nil {
+		if err := tx.CreateMediaFileEpisode(link); err != nil {
 			return err
 		}
 	}
 
-	// Subtitles only when metadata processed
-	if err := s.createSubtitleTracks(mf, ffdata); err != nil {
-		return err
-	}
-
-	return nil
+	return s.createSubtitleTracksTx(tx, mf, ffdata)
 }
 
 func (s *FSScanner) attachMovie(lib *domain.Library, mf *domain.MediaFile) (*attachResult, error) {
@@ -321,6 +304,36 @@ func (s *FSScanner) attachMovie(lib *domain.Library, mf *domain.MediaFile) (*att
 	}
 
 	if err := s.store.CreateMovie(m); err != nil {
+		return nil, err
+	}
+
+	mf.MovieID = &m.ID
+	return &attachResult{MovieCreated: true}, nil
+}
+
+func (s *FSScanner) attachMovieTx(tx store.Store, lib *domain.Library, mf *domain.MediaFile) (*attachResult, error) {
+
+	title, year := guessMovieTitleAndYear(filepath.Base(mf.Path))
+
+	existing, err := tx.GetMovieByTitleAndYear(title, year, lib.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if existing != nil {
+		mf.MovieID = &existing.ID
+		return &attachResult{}, nil
+	}
+
+	m := &domain.Movie{
+		LibraryID:     lib.ID,
+		Title:         title,
+		OriginalTitle: title,
+		Year:          year,
+		RuntimeMin:    mf.DurationSec / 60,
+	}
+
+	if err := tx.CreateMovie(m); err != nil {
 		return nil, err
 	}
 
@@ -422,6 +435,72 @@ func (s *FSScanner) attachSeriesEpisode(
 
 }
 
+func (s *FSScanner) attachSeriesEpisodeTx(
+	tx store.Store,
+	lib *domain.Library,
+	mf *domain.MediaFile,
+) ([]*domain.Episode, *attachResult, error) {
+
+	filename := filepath.Base(mf.Path)
+
+	// 1) Range pattern: S01E01-02
+	if m := reSxxExxRange.FindStringSubmatch(filename); len(m) == 4 {
+		season, _ := strconv.Atoi(m[1])
+		startEp, _ := strconv.Atoi(m[2])
+		endEp, _ := strconv.Atoi(m[3])
+		if endEp < startEp {
+			endEp = startEp
+		}
+		return s.linkSeriesRangeTx(tx, lib, season, startEp, endEp, mf)
+	}
+
+	// 2) Single SxxExx
+	if m := reSxxExx.FindStringSubmatch(filename); len(m) == 3 {
+		season, _ := strconv.Atoi(m[1])
+		episode, _ := strconv.Atoi(m[2])
+
+		ep, ar, err := s.linkSeriesSingleTx(tx, lib, season, episode, mf)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return []*domain.Episode{ep}, ar, nil
+	}
+
+	// 3) 1x02
+	if m := reNxxN.FindStringSubmatch(filename); len(m) == 3 {
+		season, _ := strconv.Atoi(m[1])
+		episode, _ := strconv.Atoi(m[2])
+
+		ep, ar, err := s.linkSeriesSingleTx(tx, lib, season, episode, mf)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return []*domain.Episode{ep}, ar, nil
+	}
+
+	// 4) Anime-style
+	if m := reAnimeEp.FindStringSubmatch(filename); len(m) == 3 {
+		episode, _ := strconv.Atoi(m[2])
+
+		ep, ar, err := s.linkSeriesSingleTx(tx, lib, 1, episode, mf)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return []*domain.Episode{ep}, ar, nil
+	}
+
+	// 5) Fallback
+	ep, ar, err := s.fallbackSeriesDetectionTx(tx, lib, mf)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return []*domain.Episode{ep}, ar, nil
+}
+
 // createSubtitleTracks stores both embedded and external subtitles.
 func (s *FSScanner) createSubtitleTracks(mf *domain.MediaFile, ffdata *FFProbeOutput) error {
 	// 1) Embedded subtitles from ffprobe.
@@ -474,6 +553,64 @@ func (s *FSScanner) createSubtitleTracks(mf *domain.MediaFile, ffdata *FFProbeOu
 		}
 
 		if err := s.store.CreateSubtitleTrack(sub); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *FSScanner) createSubtitleTracksTx(tx store.Store, mf *domain.MediaFile, ffdata *FFProbeOutput) error {
+	// 1) Embedded subtitles from ffprobe.
+	for _, st := range ffdata.Streams {
+		if st.CodecType != "subtitle" {
+			continue
+		}
+
+		language := strings.TrimSpace(st.Tags.Language)
+		format := st.CodecName
+
+		isDefault := st.Disposition.Default == 1
+		isForced := st.Disposition.Forced == 1
+
+		streamIndex := st.Index
+
+		sub := &domain.SubtitleTrack{
+			MediaFileID: mf.ID,
+			Source:      domain.SubtitleSourceEmbedded,
+			StreamIndex: &streamIndex,
+			Language:    language,
+			IsForced:    isForced,
+			IsDefault:   isDefault,
+			Format:      format,
+		}
+
+		if err := tx.CreateSubtitleTrack(sub); err != nil {
+			return err
+		}
+	}
+
+	// 2) External sidecar subtitles (.srt, .ass, .vtt, .sub).
+	externalSubs, err := findExternalSubtitles(mf.Path)
+	if err != nil {
+		return err
+	}
+
+	for _, ex := range externalSubs {
+		lang := ex.Language
+		format := strings.TrimPrefix(strings.ToLower(filepath.Ext(ex.Path)), ".")
+
+		sub := &domain.SubtitleTrack{
+			MediaFileID:  mf.ID,
+			Source:       domain.SubtitleSourceExternal,
+			ExternalPath: &ex.Path,
+			Language:     lang,
+			IsForced:     false,
+			IsDefault:    false,
+			Format:       format,
+		}
+
+		if err := tx.CreateSubtitleTrack(sub); err != nil {
 			return err
 		}
 	}
@@ -603,6 +740,67 @@ func (s *FSScanner) linkSeriesSingle(
 	return ep, res, nil
 }
 
+func (s *FSScanner) linkSeriesSingleTx(
+	tx store.Store,
+	lib *domain.Library,
+	season, episode int,
+	mf *domain.MediaFile,
+) (*domain.Episode, *attachResult, error) {
+
+	res := &attachResult{}
+	title := extractSeriesTitle(mf.Path)
+
+	// 1) Series
+	sr, err := tx.GetSeriesByTitle(title, lib.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if sr == nil {
+		sr = &domain.Series{
+			LibraryID: lib.ID,
+			Title:     title,
+		}
+		if err := tx.CreateSeries(sr); err != nil {
+			return nil, nil, err
+		}
+		res.SeriesCreated = true
+	}
+
+	// 2) Season
+	se, err := tx.GetSeasonBySeriesAndNumber(sr.ID, season)
+	if err != nil {
+		return nil, nil, err
+	}
+	if se == nil {
+		se = &domain.Season{
+			SeriesID: sr.ID,
+			Number:   season,
+		}
+		if err := tx.CreateSeason(se); err != nil {
+			return nil, nil, err
+		}
+		res.SeasonCreated = true
+	}
+
+	// 3) Episode
+	ep, err := tx.GetEpisodeBySeasonAndNumber(se.ID, episode)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ep == nil {
+		ep = &domain.Episode{
+			SeasonID: se.ID,
+			Number:   episode,
+		}
+		if err := tx.CreateEpisode(ep); err != nil {
+			return nil, nil, err
+		}
+		res.EpisodesCreated = 1
+	}
+
+	return ep, res, nil
+}
+
 // linkSeriesRange: S01E01-02 → creates/returns episodes 1 and 2.
 func (s *FSScanner) linkSeriesRange(
 	lib *domain.Library,
@@ -615,6 +813,36 @@ func (s *FSScanner) linkSeriesRange(
 
 	for n := startEp; n <= endEp; n++ {
 		ep, ar, err := s.linkSeriesSingle(lib, season, n, mf)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if ar.SeriesCreated {
+			res.SeriesCreated = true
+		}
+		if ar.SeasonCreated {
+			res.SeasonCreated = true
+		}
+		res.EpisodesCreated += ar.EpisodesCreated
+
+		eps = append(eps, ep)
+	}
+
+	return eps, res, nil
+}
+
+func (s *FSScanner) linkSeriesRangeTx(
+	tx store.Store,
+	lib *domain.Library,
+	season, startEp, endEp int,
+	mf *domain.MediaFile,
+) ([]*domain.Episode, *attachResult, error) {
+
+	res := &attachResult{}
+	var eps []*domain.Episode
+
+	for n := startEp; n <= endEp; n++ {
+		ep, ar, err := s.linkSeriesSingleTx(tx, lib, season, n, mf)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -696,6 +924,22 @@ func (s *FSScanner) fallbackSeriesDetection(
 
 	return ep, ar, nil
 
+}
+
+func (s *FSScanner) fallbackSeriesDetectionTx(
+	tx store.Store,
+	lib *domain.Library,
+	mf *domain.MediaFile,
+) (*domain.Episode, *attachResult, error) {
+
+	epNum := guessEpisodeNumber(filepath.Base(mf.Path))
+
+	ep, ar, err := s.linkSeriesSingleTx(tx, lib, 1, epNum, mf)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return ep, ar, nil
 }
 
 func guessEpisodeNumber(filename string) int {

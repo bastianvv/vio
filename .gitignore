@@ -13,6 +13,8 @@ vio.db
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
 
 # =========================
 # Logs & temp files

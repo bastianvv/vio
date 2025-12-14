@@ -9,22 +9,67 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type sqliteExec interface {
+	Exec(query string, args ...any) (sql.Result, error)
+	Query(query string, args ...any) (*sql.Rows, error)
+	QueryRow(query string, args ...any) *sql.Row
+}
+
 type SQLiteStore struct {
-	db *sql.DB
+	db   *sql.DB
+	exec sqliteExec
 }
 
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	db, err := sql.Open("sqlite3", path)
-	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	if err != nil {
 		return nil, err
 	}
 
-	s := &SQLiteStore{db: db}
-	return s, nil
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON;`); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	_, _ = db.Exec(`PRAGMA busy_timeout = 5000;`)
+	_, _ = db.Exec(`PRAGMA journal_mode = WAL;`)
+
+	return &SQLiteStore{
+		db:   db,
+		exec: db,
+	}, nil
 }
 
-func (s *SQLiteStore) Close() error { return s.db.Close() }
+func (s *SQLiteStore) Close() error {
+	if s.db != nil {
+		return s.db.Close()
+	}
+	return nil
+}
+
+func (s *SQLiteStore) WithTx(fn func(tx Store) error) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, _ = tx.Exec(`PRAGMA foreign_keys = ON;`)
+
+	txStore := &SQLiteStore{
+		db:   nil, 
+		exec: tx,
+	}
+
+	if err := fn(txStore); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
 
 // ============================================================================
 // Libraries
@@ -35,7 +80,7 @@ func (s *SQLiteStore) CreateLibrary(lib *domain.Library) error {
 	lib.CreatedAt = now
 	lib.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO libraries (name, type, path, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?)
     `, lib.Name, lib.Type, lib.Path, lib.CreatedAt, lib.UpdatedAt)
@@ -50,7 +95,7 @@ func (s *SQLiteStore) CreateLibrary(lib *domain.Library) error {
 }
 
 func (s *SQLiteStore) ListLibraries() ([]domain.Library, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, name, type, path, created_at, updated_at
         FROM libraries
         ORDER BY id
@@ -76,7 +121,7 @@ func (s *SQLiteStore) ListLibraries() ([]domain.Library, error) {
 
 func (s *SQLiteStore) GetLibrary(id int64) (*domain.Library, error) {
 	var l domain.Library
-	err := s.db.QueryRow(`
+	err := s.exec.QueryRow(`
         SELECT id, name, type, path, created_at, updated_at
         FROM libraries
         WHERE id = ?
@@ -97,7 +142,7 @@ func (s *SQLiteStore) UpdateLibrary(lib *domain.Library) error {
 
 	now := time.Now().UTC()
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
 		UPDATE libraries
 		SET name = ?, type = ?, path = ?, updated_at = ?
 		WHERE id = ?
@@ -134,7 +179,7 @@ func (s *SQLiteStore) CreateMovie(m *domain.Movie) error {
 	m.CreatedAt = now
 	m.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO movies (library_id, title, original_title, year, tmdb_id,
                             overview, runtime_min, poster_path, backdrop_path,
                             created_at, updated_at)
@@ -154,7 +199,7 @@ func (s *SQLiteStore) CreateMovie(m *domain.Movie) error {
 
 func (s *SQLiteStore) GetMovie(id int64) (*domain.Movie, error) {
 	var m domain.Movie
-	err := s.db.QueryRow(`
+	err := s.exec.QueryRow(`
         SELECT id, library_id, title, original_title, year, tmdb_id,
                overview, runtime_min, poster_path, backdrop_path,
                created_at, updated_at
@@ -172,7 +217,7 @@ func (s *SQLiteStore) GetMovie(id int64) (*domain.Movie, error) {
 }
 
 func (s *SQLiteStore) GetMovieByTitleAndYear(title string, year int, libraryID int64) (*domain.Movie, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, library_id, title, original_title, year, tmdb_id, overview,
                runtime_min, poster_path, backdrop_path, created_at, updated_at
         FROM movies
@@ -206,7 +251,7 @@ func (s *SQLiteStore) GetMovieByTitleAndYear(title string, year int, libraryID i
 }
 
 func (s *SQLiteStore) ListMoviesByLibrary(libraryID int64) ([]domain.Movie, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, library_id, title, original_title, year, tmdb_id,
                overview, runtime_min, poster_path, backdrop_path,
                created_at, updated_at
@@ -244,7 +289,7 @@ func (s *SQLiteStore) CreateSeries(sr *domain.Series) error {
 	sr.CreatedAt = now
 	sr.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO series (library_id, title, original_title, tmdb_id, overview,
                             status, poster_path, backdrop_path, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -260,7 +305,7 @@ func (s *SQLiteStore) CreateSeries(sr *domain.Series) error {
 }
 
 func (s *SQLiteStore) GetSeriesByTitle(title string, libraryID int64) (*domain.Series, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, library_id, title, original_title, tmdb_id, overview, status,
                poster_path, backdrop_path, created_at, updated_at
         FROM series
@@ -294,7 +339,7 @@ func (s *SQLiteStore) GetSeriesByTitle(title string, libraryID int64) (*domain.S
 
 func (s *SQLiteStore) GetSeries(id int64) (*domain.Series, error) {
 	var sr domain.Series
-	err := s.db.QueryRow(`
+	err := s.exec.QueryRow(`
         SELECT id, library_id, title, original_title, tmdb_id, overview,
                status, poster_path, backdrop_path, created_at, updated_at
         FROM series
@@ -311,7 +356,7 @@ func (s *SQLiteStore) GetSeries(id int64) (*domain.Series, error) {
 }
 
 func (s *SQLiteStore) ListSeries() ([]*domain.Series, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, library_id, title, overview, poster_path, backdrop_path,
                created_at, updated_at
         FROM series
@@ -349,7 +394,7 @@ func (s *SQLiteStore) CreateSeason(se *domain.Season) error {
 	se.CreatedAt = now
 	se.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO seasons (series_id, season_number, title, overview,
                              poster_path, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -365,7 +410,7 @@ func (s *SQLiteStore) CreateSeason(se *domain.Season) error {
 }
 
 func (s *SQLiteStore) GetSeasonBySeriesAndNumber(seriesID int64, number int) (*domain.Season, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, series_id, season_number, title, overview, poster_path,
                created_at, updated_at
         FROM seasons
@@ -395,7 +440,7 @@ func (s *SQLiteStore) GetSeasonBySeriesAndNumber(seriesID int64, number int) (*d
 }
 
 func (s *SQLiteStore) GetSeason(id int64) (*domain.Season, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, series_id, season_number, title, overview, poster_path,
                air_date, created_at, updated_at
         FROM seasons
@@ -421,7 +466,7 @@ func (s *SQLiteStore) GetSeason(id int64) (*domain.Season, error) {
 }
 
 func (s *SQLiteStore) ListSeasonsBySeries(seriesID int64) ([]domain.Season, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, series_id, season_number, title, overview, poster_path,
                air_date, created_at, updated_at
         FROM seasons
@@ -460,7 +505,7 @@ func (s *SQLiteStore) CreateEpisode(ep *domain.Episode) error {
 	ep.CreatedAt = now
 	ep.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO episodes (season_id, episode_number, title, overview,
                               air_date, runtime_min, still_path, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -478,7 +523,7 @@ func (s *SQLiteStore) CreateEpisode(ep *domain.Episode) error {
 
 func (s *SQLiteStore) GetEpisode(id int64) (*domain.Episode, error) {
 	var ep domain.Episode
-	err := s.db.QueryRow(`
+	err := s.exec.QueryRow(`
         SELECT id, season_id, episode_number, title, overview,
                air_date, runtime_min, still_path, created_at, updated_at
         FROM episodes
@@ -495,7 +540,7 @@ func (s *SQLiteStore) GetEpisode(id int64) (*domain.Episode, error) {
 }
 
 func (s *SQLiteStore) GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*domain.Episode, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, season_id, episode_number, title, overview, air_date, runtime_min,
                still_path, created_at, updated_at
         FROM episodes
@@ -527,7 +572,7 @@ func (s *SQLiteStore) GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*
 }
 
 func (s *SQLiteStore) ListEpisodesBySeason(seasonID int64) ([]domain.Episode, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, season_id, episode_number, title, overview, air_date,
                runtime_min, still_path, created_at, updated_at
         FROM episodes
@@ -559,7 +604,7 @@ func (s *SQLiteStore) ListEpisodesBySeason(seasonID int64) ([]domain.Episode, er
 // Media Files
 // ============================================================================
 func (s *SQLiteStore) GetMediaFile(id int64) (*domain.MediaFile, error) {
-	row := s.db.QueryRow(`
+	row := s.exec.QueryRow(`
         SELECT id, library_id, movie_id, episode_id, path, size_bytes,
                hash, is_missing, last_seen_at, missing_since, container, video_codec, audio_codec,
                video_width, video_height, audio_channels, duration_sec,
@@ -604,7 +649,7 @@ func (s *SQLiteStore) CreateMediaFile(mf *domain.MediaFile) error {
 	mf.CreatedAt = now
 	mf.UpdatedAt = now
 
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
 		INSERT INTO media_files (
 		    library_id,
 		    path,
@@ -654,7 +699,7 @@ func (s *SQLiteStore) CreateMediaFile(mf *domain.MediaFile) error {
 }
 
 func (s *SQLiteStore) CreateMediaFileEpisode(link *domain.MediaFileEpisode) error {
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO media_file_episodes (media_file_id, episode_id)
         VALUES (?, ?)
     `, link.MediaFileID, link.EpisodeID)
@@ -667,7 +712,7 @@ func (s *SQLiteStore) CreateMediaFileEpisode(link *domain.MediaFileEpisode) erro
 }
 
 func (s *SQLiteStore) ListEpisodesByMediaFile(mediaFileID int64) ([]domain.Episode, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT e.id, e.season_id, e.episode_number, e.title, e.overview,
                e.air_date, e.runtime_min, e.still_path, e.created_at, e.updated_at
         FROM media_file_episodes mfe
@@ -704,7 +749,7 @@ func (s *SQLiteStore) ListEpisodesByMediaFile(mediaFileID int64) ([]domain.Episo
 }
 
 func (s *SQLiteStore) ListMediaFilesByEpisode(episodeID int64) ([]domain.MediaFile, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, library_id, movie_id, episode_id, path, size_bytes, hash,
                container, video_codec, audio_codec, video_width, video_height,
                audio_channels, duration_sec,
@@ -736,7 +781,7 @@ func (s *SQLiteStore) ListMediaFilesByEpisode(episodeID int64) ([]domain.MediaFi
 }
 
 func (s *SQLiteStore) ListMediaFilesByMovie(movieID int64) ([]domain.MediaFile, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, library_id, movie_id, episode_id, path, size_bytes,
                hash, container, video_codec, audio_codec,
                video_width, video_height, audio_channels, duration_sec,
@@ -805,7 +850,7 @@ func (s *SQLiteStore) GetMediaFileByPath(path string) (*domain.MediaFile, error)
 
 	var mf domain.MediaFile
 
-	err := s.db.QueryRow(q, path).Scan(
+	err := s.exec.QueryRow(q, path).Scan(
 		&mf.ID,
 		&mf.LibraryID,
 		&mf.Path,
@@ -851,7 +896,7 @@ func (s *SQLiteStore) UpdateMediaFile(mf *domain.MediaFile) error {
 	WHERE id = ?
 	`
 
-	_, err := s.db.Exec(
+	_, err := s.exec.Exec(
 		q,
 		mf.SizeBytes,
 		mf.Hash,
@@ -888,7 +933,7 @@ func (s *SQLiteStore) MarkMissingMediaFiles(
 			AND is_missing = FALSE
 	`
 
-	res, err := s.db.Exec(q, scanStartedAt, libraryID, scanStartedAt)
+	res, err := s.exec.Exec(q, scanStartedAt, libraryID, scanStartedAt)
 	if err != nil {
 		return 0, err
 	}
@@ -916,7 +961,7 @@ func (s *SQLiteStore) MarkMediaFileSeen(
 		WHERE id = ?
 	`
 
-	_, err := s.db.Exec(q, seenAt, seenAt, id)
+	_, err := s.exec.Exec(q, seenAt, seenAt, id)
 	return err
 }
 
@@ -925,7 +970,7 @@ func (s *SQLiteStore) MarkMediaFileSeen(
 // ============================================================================
 
 func (s *SQLiteStore) CreateSubtitleTrack(st *domain.SubtitleTrack) error {
-	res, err := s.db.Exec(`
+	res, err := s.exec.Exec(`
         INSERT INTO subtitle_tracks (
             media_file_id, source, external_path, stream_index, language,
             is_forced, is_default, format
@@ -944,7 +989,7 @@ func (s *SQLiteStore) CreateSubtitleTrack(st *domain.SubtitleTrack) error {
 }
 
 func (s *SQLiteStore) ListSubtitleTracks(mediaFileID int64) ([]domain.SubtitleTrack, error) {
-	rows, err := s.db.Query(`
+	rows, err := s.exec.Query(`
         SELECT id, media_file_id, source, external_path, stream_index, language,
                is_forced, is_default, format
         FROM subtitle_tracks
@@ -977,17 +1022,17 @@ func (s *SQLiteStore) ListSubtitleTracks(mediaFileID int64) ([]domain.SubtitleTr
 
 func (s *SQLiteStore) CleanupEmptySeries(libraryID int64) (int64, error) {
 	const q = `
-		DELETE FROM series
-		WHERE id IN (
-			SELECT sr.id
-			FROM series sr
-			LEFT JOIN seasons s ON s.series_id = sr.id
-			WHERE sr.library_id = ?
-			  AND s.id IS NULL
-		)
+	DELETE FROM series
+	WHERE id IN (
+		SELECT sr.id
+		FROM series sr
+		LEFT JOIN seasons s ON s.series_id = sr.id
+		WHERE sr.library_id = ?
+		GROUP BY sr.id
+		HAVING COUNT(s.id) = 0
+	)
 	`
-
-	res, err := s.db.Exec(q, libraryID)
+	res, err := s.exec.Exec(q, libraryID)
 	if err != nil {
 		return 0, err
 	}
@@ -998,18 +1043,16 @@ func (s *SQLiteStore) CleanupEmptySeasons(libraryID int64) (int64, error) {
 	const q = `
 	DELETE FROM seasons
 	WHERE id IN (
-		SELECT se.id
-		FROM seasons se
-		JOIN series sr ON sr.id = se.series_id
+		SELECT s.id
+		FROM seasons s
+		JOIN series sr ON sr.id = s.series_id
+		LEFT JOIN episodes e ON e.season_id = s.id
 		WHERE sr.library_id = ?
-		AND NOT EXISTS (
-			SELECT 1
-			FROM episodes e
-			WHERE e.season_id = se.id
-		)
+		GROUP BY s.id
+		HAVING COUNT(e.id) = 0
 	)
 	`
-	res, err := s.db.Exec(q, libraryID)
+	res, err := s.exec.Exec(q, libraryID)
 	if err != nil {
 		return 0, err
 	}
@@ -1020,27 +1063,22 @@ func (s *SQLiteStore) CleanupEmptyEpisodes(libraryID int64) (int64, error) {
 	const q = `
 	DELETE FROM episodes
 	WHERE id IN (
-			SELECT e.id
-			FROM episodes e
-			JOIN seasons s ON s.id = e.season_id
-			JOIN series sr ON sr.id = s.series_id
-			LEFT JOIN media_files mf
-				ON mf.episode_id = e.id
-				AND mf.is_missing = 0
-			LEFT JOIN media_file_episodes mfe
-				ON mfe.episode_id = e.id
-			WHERE sr.library_id = ?
-			GROUP BY e.id
-			HAVING COUNT(mf.id) = 0
-			   AND COUNT(mfe.episode_id) = 0
+		SELECT e.id
+		FROM episodes e
+		JOIN seasons s ON s.id = e.season_id
+		JOIN series sr ON sr.id = s.series_id
+		LEFT JOIN media_files mf
+			ON mf.episode_id = e.id
+			AND mf.is_missing = 0
+		WHERE sr.library_id = ?
+		GROUP BY e.id
+		HAVING COUNT(mf.id) = 0
 	)
 	`
-
-	res, err := s.db.Exec(q, libraryID)
+	res, err := s.exec.Exec(q, libraryID)
 	if err != nil {
 		return 0, err
 	}
-
 	return res.RowsAffected()
 }
 
@@ -1054,7 +1092,7 @@ func (s *SQLiteStore) CleanupMissingMediaFileLinks(libraryID int64) (int64, erro
 		  AND is_missing = 1
 	)
 	`
-	res, err := s.db.Exec(q, libraryID)
+	res, err := s.exec.Exec(q, libraryID)
 	if err != nil {
 		return 0, err
 	}
@@ -1062,16 +1100,32 @@ func (s *SQLiteStore) CleanupMissingMediaFileLinks(libraryID int64) (int64, erro
 }
 
 func (s *SQLiteStore) UnlinkMissingMediaFiles(libraryID int64) (int64, error) {
-	const q = `
+	// 1) Delete range links for missing files
+	const delLinks = `
+	DELETE FROM media_file_episodes
+	WHERE media_file_id IN (
+		SELECT id FROM media_files
+		WHERE library_id = ? AND is_missing = 1
+	)
+	`
+	if _, err := s.exec.Exec(delLinks, libraryID); err != nil {
+		return 0, err
+	}
+
+	// 2) Null direct links
+	const upd = `
 	UPDATE media_files
 	SET episode_id = NULL,
-	    movie_id = NULL
+	    movie_id = NULL,
+	    updated_at = ?
 	WHERE library_id = ?
 	  AND is_missing = 1
+	  AND (episode_id IS NOT NULL OR movie_id IS NOT NULL)
 	`
-	res, err := s.db.Exec(q, libraryID)
+	res, err := s.exec.Exec(upd, time.Now().UTC(), libraryID)
 	if err != nil {
 		return 0, err
 	}
+
 	return res.RowsAffected()
 }

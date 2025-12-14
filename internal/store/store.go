@@ -61,4 +61,7 @@ type Store interface {
 	CleanupEmptySeasons(libraryID int64) (int64, error)
 	CleanupEmptySeries(libraryID int64) (int64, error)
 	UnlinkMissingMediaFiles(libraryId int64) (int64, error)
+
+	//DB
+	WithTx(fn func(tx Store) error) error
 }
