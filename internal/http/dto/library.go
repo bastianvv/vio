@@ -12,6 +12,6 @@ func NewLibrary(l *domain.Library) *Library {
 	return &Library{
 		ID:   l.ID,
 		Name: l.Name,
-		Type: string(l.Type),
+		Type: string(l.Type), // enum: movies | series | anime | others
 	}
 }

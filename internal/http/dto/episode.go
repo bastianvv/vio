@@ -11,8 +11,8 @@ type Episode struct {
 	Number  int        `json:"number"`
 	Title   string     `json:"title,omitempty"`
 	AirDate *time.Time `json:"air_date,omitempty"`
-	Runtime int        `json:"runtime,omitempty"`
-	Still   string     `json:"still,omitempty"`
+	Runtime int        `json:"runtime_min,omitempty"`
+	Still   *string    `json:"still,omitempty"`
 }
 
 func NewEpisode(e *domain.Episode) *Episode {
@@ -26,6 +26,6 @@ func NewEpisode(e *domain.Episode) *Episode {
 		Title:   e.Title,
 		AirDate: e.AirDate,
 		Runtime: e.RuntimeMin,
-		Still:   strPtr(e.StillPath),
+		Still:   e.StillPath,
 	}
 }

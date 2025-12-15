@@ -20,6 +20,7 @@ func NewRouter(s store.Store) http.Handler {
 	moviesHandler := NewMoviesHandler(s)
 	librariesHandler := NewLibrariesHandler(s, scanner)
 	filesHandler := NewFilesHandler(s)
+	subtitlesHandler := NewSubtitlesHandler(s)
 
 	// ---- Libraries ----
 	r.Get("/api/libraries", librariesHandler.ListLibraries)
@@ -50,6 +51,9 @@ func NewRouter(s store.Store) http.Handler {
 	// ---- Files ----
 	r.Get("/api/files/{id}", filesHandler.GetFile)
 	r.Get("/api/files/{id}/stream", filesHandler.StreamFile)
+
+	// --- Subtitles ---
+	r.Get("/api/files/{id}/subtitles", subtitlesHandler.ListSubtitleTracks)
 
 	return r
 }

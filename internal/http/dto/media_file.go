@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/bastianvv/vio/internal/domain"
+import (
+	"time"
+
+	"github.com/bastianvv/vio/internal/domain"
+)
 
 type MediaFile struct {
 	ID            int64  `json:"id"`
@@ -11,7 +15,10 @@ type MediaFile struct {
 	Width         int    `json:"width"`
 	Height        int    `json:"height"`
 	AudioChannels int    `json:"audio_channels"`
-	Duration      int    `json:"duration"`
+	Duration      int    `json:"duration_sec"`
+
+	IsMissing    bool       `json:"is_missing"`
+	MissingSince *time.Time `json:"missing_since,omitempty"`
 }
 
 func NewMediaFile(m *domain.MediaFile) *MediaFile {
@@ -29,5 +36,7 @@ func NewMediaFile(m *domain.MediaFile) *MediaFile {
 		Height:        m.VideoHeight,
 		AudioChannels: m.AudioChannels,
 		Duration:      m.DurationSec,
+		IsMissing:     m.IsMissing,
+		MissingSince:  m.MissingSince,
 	}
 }

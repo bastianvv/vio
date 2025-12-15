@@ -3,6 +3,15 @@
 This document defines the core invariants, lifecycle rules, and API stability guarantees of VIO.
 These rules are considered architectural constraints and must be preserved across refactors and feature additions.
 
+## API Stability
+
+- The API is considered v1 (unstable but contract-tested)
+- Breaking changes require:
+  - Updating invariant tests
+  - Updating OpenAPI
+- DTO fields are additive-only within v1
+- Error response shape is stable
+
 ## Data Invariants
 ### Media Files
 * A media file is either present or missing, never both.

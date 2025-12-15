@@ -1,0 +1,40 @@
+meta {
+  name: list-subtitles
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{files_path}}/1/subtitles
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Subtitles request succeeds", () => {
+    expect(res.status).to.equal(200);
+    expect(Array.isArray(res.body)).to.be.true;
+  });
+  
+  for (const sub of res.body) {
+    test(`subtitle ${sub.id} is well-formed`, () => {
+      expect(sub.source).to.be.oneOf(["EMBEDDED", "EXTERNAL"]);
+      expect(typeof sub.is_forced).to.equal("boolean");
+      expect(typeof sub.is_default).to.equal("boolean");
+    });
+  
+    if (sub.source === "EMBEDDED") {
+      expect(sub.stream_index).to.not.be.undefined;
+    }
+  
+    if (sub.source === "EXTERNAL") {
+      expect(sub.external).to.equal(true);
+    }
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

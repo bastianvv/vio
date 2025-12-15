@@ -3,11 +3,11 @@ package dto
 import "github.com/bastianvv/vio/internal/domain"
 
 type Season struct {
-	ID       int64  `json:"id"`
-	Number   int    `json:"number"`
-	Title    string `json:"title,omitempty"`
-	Poster   string `json:"poster,omitempty"`
-	Overview string `json:"overview,omitempty"`
+	ID         int64   `json:"id"`
+	Number     int     `json:"number"`
+	Title      string  `json:"title,omitempty"`
+	Overview   string  `json:"overview,omitempty"`
+	PosterPath *string `json:"poster_path,omitempty"`
 }
 
 func NewSeason(s *domain.Season) *Season {
@@ -16,10 +16,10 @@ func NewSeason(s *domain.Season) *Season {
 	}
 
 	return &Season{
-		ID:       s.ID,
-		Number:   s.Number,
-		Title:    s.Title,
-		Poster:   strPtr(s.PosterPath),
-		Overview: s.Overview,
+		ID:         s.ID,
+		Number:     s.Number,
+		Title:      s.Title,
+		Overview:   s.Overview,
+		PosterPath: s.PosterPath,
 	}
 }

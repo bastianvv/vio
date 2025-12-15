@@ -9,7 +9,6 @@ type Movie struct {
 	Overview     string  `json:"overview,omitempty"`
 	PosterPath   *string `json:"poster_path,omitempty"`
 	BackdropPath *string `json:"backdrop_path,omitempty"`
-	AirDate      *string `json:"air_date,omitempty"`
 }
 
 func NewMovie(m *domain.Movie) *Movie {
