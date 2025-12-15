@@ -1,0 +1,20 @@
+meta {
+  name: list-episode-files
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{episodes_path}}/1/files?library_id=2
+  body: none
+  auth: inherit
+}
+
+params:query {
+  library_id: 2
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

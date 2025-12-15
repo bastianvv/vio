@@ -1,0 +1,24 @@
+meta {
+  name: list-series
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{series_path}}
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Series list returned", () => {
+    expect(Array.isArray(res.body)).to.be.true;
+    expect(res.body.length).to.be.greaterThan(0);
+  });
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

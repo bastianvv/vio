@@ -1,0 +1,30 @@
+meta {
+  name: list-episodes
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{seasons_path}}/1/episodes
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Episodes list returned", () => {
+    expect(Array.isArray(res.body)).to.be.true;
+    expect(res.body.length).to.be.greaterThan(0);
+  });
+  
+  for (const ep of res.body) {
+    test(`episode ${ep.id} has a number`, () => {
+      expect(ep.number).to.be.a("number");
+    });
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

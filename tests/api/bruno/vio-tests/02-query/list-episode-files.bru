@@ -1,0 +1,34 @@
+meta {
+  name: list-episode-files
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{episodes_path}}/21/files??library_id=2
+  body: none
+  auth: inherit
+}
+
+params:query {
+  ?library_id: 2
+}
+
+tests {
+  test("Episode files returned", () => {
+    expect(Array.isArray(res.body)).to.be.true;
+    expect(res.body.length).to.be.greaterThan(0);
+  });
+  
+  for (const file of res.body) {
+    test(`file ${file.id} is linked to episode`, () => {
+      expect(file.id).to.be.a("number");
+    });
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

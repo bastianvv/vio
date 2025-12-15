@@ -1,0 +1,37 @@
+meta {
+  name: list-movie-files
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{movies_path}}/1/files?library_id=1
+  body: none
+  auth: inherit
+}
+
+params:query {
+  library_id: 1
+}
+
+tests {
+  test("Movie files returned", () => {
+    expect(Array.isArray(res.body)).to.be.true;
+  });
+  
+  for (const file of res.body) {
+    test(`file ${file.id} belongs to a movie`, () => {
+      expect(file.id).to.be.a("number");
+    });
+  
+    test(`file ${file.id} is not missing`, () => {
+      expect(file.is_missing).to.not.equal(true);
+    });
+  }
+  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
