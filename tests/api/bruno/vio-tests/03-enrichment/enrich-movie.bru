@@ -1,0 +1,37 @@
+meta {
+  name: enrich-movie
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://localhost:8080/api/movies/2/enrich
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Movie is returned", () => {
+    expect(res.body).to.be.an("object");
+  });
+  
+  test("Movie data is enriched", () => {
+    expect(res.body.movie.tmdb_id).to.exist;
+    expect(res.body.movie.tmdb_id).to.not.be.null;
+    expect(res.body.movie.overview).to.exist;
+    expect(res.body.movie.overview).to.not.be.null;
+    expect(res.body.movie.poster_path).to.exist;
+    expect(res.body.movie.poster_path).to.not.be.null;
+    expect(res.body.movie.backdrop_path).to.exist;
+    expect(res.body.movie.backdrop_path).to.not.be.null;
+    expect(res.body.provider).to.exist;
+    expect(res.body.provider).to.not.be.null;
+    expect(res.body.status).to.exist;
+    expect(res.body.status).to.be.equals("enriched");
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
