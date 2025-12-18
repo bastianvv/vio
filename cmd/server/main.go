@@ -9,9 +9,13 @@ import (
 	"github.com/bastianvv/vio/internal/metadata"
 	"github.com/bastianvv/vio/internal/metadata/tmdb"
 	"github.com/bastianvv/vio/internal/store"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+
+	_ = godotenv.Load()
+
 	dbPath := envOr("VIO_DB", "vio.db")
 	addr := envOr("VIO_ADDR", ":8080")
 	tmdbKey := os.Getenv("TMDB_API_KEY")
