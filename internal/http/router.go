@@ -7,6 +7,7 @@ import (
 
 	"github.com/bastianvv/vio/internal/media"
 	"github.com/bastianvv/vio/internal/metadata"
+	"github.com/bastianvv/vio/internal/scan"
 	"github.com/bastianvv/vio/internal/store"
 )
 
@@ -15,11 +16,12 @@ func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 
 	// Initialize split handlers
 	scanner := media.NewScanner(s)
+	scans := scan.NewRegistry()
 	seriesHandler := NewSeriesHandler(s)
 	seasonsHandler := NewSeasonsHandler(s)
 	episodesHandler := NewEpisodesHandler(s)
 	moviesHandler := NewMoviesHandler(s, enricher)
-	librariesHandler := NewLibrariesHandler(s, scanner)
+	librariesHandler := NewLibrariesHandler(s, scanner, scans)
 	filesHandler := NewFilesHandler(s)
 	subtitlesHandler := NewSubtitlesHandler(s)
 
@@ -56,6 +58,9 @@ func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 
 	// --- Subtitles ---
 	r.Get("/api/files/{id}/subtitles", subtitlesHandler.ListSubtitleTracks)
+
+	// --- Scanner ---
+	r.Get("/api/scans/{job_id}", librariesHandler.GetScanJob)
 
 	return r
 }

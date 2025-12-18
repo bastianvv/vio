@@ -15,17 +15,11 @@ tests {
     expect(res.getStatus()).to.equal(200);
   });
   
-  test("Should return scanned library results", function () {
-    const res_body = res.getBody();
-    
-    expect(res_body).to.have.property("LibraryID");
-    expect(res_body.FilesScanned).to.be.above(0);
-    expect(res_body.Errors).to.be.null;
+  test("Should return scan job running", function () {  
+    expect(res.body.job_id).to.not.be.null;
+    expect(res.body.status).to.be.equals("running")
   });
   
-  test("Scan does not delete media", () => {
-    expect(res.body.Errors).to.be.null;
-  });
 }
 
 settings {

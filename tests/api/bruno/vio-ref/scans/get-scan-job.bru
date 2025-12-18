@@ -1,0 +1,16 @@
+meta {
+  name: get-scan-job
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}{{api_path}}{{scans_path}}/575bcd1d-9005-4e67-9853-a8ef25c54925
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
