@@ -7,7 +7,12 @@ import (
 
 	"github.com/bastianvv/vio/internal/domain"
 	_ "github.com/mattn/go-sqlite3"
+
+	_ "embed"
 )
+
+//go:embed schema.sql
+var schemaSQL string
 
 type sqliteExec interface {
 	Exec(query string, args ...any) (sql.Result, error)
@@ -69,6 +74,11 @@ func (s *SQLiteStore) WithTx(fn func(tx Store) error) error {
 	}
 
 	return tx.Commit()
+}
+
+func (s *SQLiteStore) EnsureSchema() error {
+	_, err := s.db.Exec(schemaSQL)
+	return err
 }
 
 // ============================================================================

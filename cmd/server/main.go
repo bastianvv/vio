@@ -20,6 +20,11 @@ func main() {
 	}
 	defer func() { _ = s.Close() }()
 
+	// Ensure schema exists
+	if err := s.EnsureSchema(); err != nil {
+		log.Fatalf("failed to init schema: %v", err)
+	}
+
 	// Initialize router
 	r := apphttp.NewRouter(s)
 

@@ -1,11 +1,11 @@
 meta {
-  name: full-scan
+  name: incremental-scan series
   type: http
   seq: 4
 }
 
 post {
-  url: {{base_url}}{{api_path}}{{libraries_path}}/2/rescan
+  url: {{base_url}}{{api_path}}{{libraries_path}}/2/scan
   body: none
   auth: inherit
 }
