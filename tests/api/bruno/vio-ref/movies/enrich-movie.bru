@@ -1,0 +1,16 @@
+meta {
+  name: enrich-movie
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://localhost:8080/api/movies/1/enrich
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

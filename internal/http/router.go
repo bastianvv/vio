@@ -6,10 +6,11 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/bastianvv/vio/internal/media"
+	"github.com/bastianvv/vio/internal/metadata"
 	"github.com/bastianvv/vio/internal/store"
 )
 
-func NewRouter(s store.Store) http.Handler {
+func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 	r := chi.NewRouter()
 
 	// Initialize split handlers
@@ -17,7 +18,7 @@ func NewRouter(s store.Store) http.Handler {
 	seriesHandler := NewSeriesHandler(s)
 	seasonsHandler := NewSeasonsHandler(s)
 	episodesHandler := NewEpisodesHandler(s)
-	moviesHandler := NewMoviesHandler(s)
+	moviesHandler := NewMoviesHandler(s, enricher)
 	librariesHandler := NewLibrariesHandler(s, scanner)
 	filesHandler := NewFilesHandler(s)
 	subtitlesHandler := NewSubtitlesHandler(s)
@@ -34,6 +35,7 @@ func NewRouter(s store.Store) http.Handler {
 	r.Get("/api/movies", moviesHandler.ListMovies)
 	r.Get("/api/movies/{id}", moviesHandler.GetMovie)
 	r.Get("/api/movies/{id}/files", moviesHandler.ListMediaFiles)
+	r.Post("/api/movies/{id}/enrich", moviesHandler.EnrichMovie)
 
 	// ---- Series ----
 	r.Get("/api/series", seriesHandler.ListSeries)

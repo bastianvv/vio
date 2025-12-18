@@ -6,12 +6,19 @@ import (
 	"os"
 
 	apphttp "github.com/bastianvv/vio/internal/http"
+	"github.com/bastianvv/vio/internal/metadata"
+	"github.com/bastianvv/vio/internal/metadata/tmdb"
 	"github.com/bastianvv/vio/internal/store"
 )
 
 func main() {
 	dbPath := envOr("VIO_DB", "vio.db")
 	addr := envOr("VIO_ADDR", ":8080")
+	tmdbKey := "487de335e804022ee3538ab055bd2b53" //os.Getenv("TMDB_API_KEY")
+
+	if tmdbKey == "" {
+		log.Fatal("TMDB_API_KEY is required")
+	}
 
 	// Open database
 	s, err := store.NewSQLiteStore(dbPath)
@@ -20,13 +27,16 @@ func main() {
 	}
 	defer func() { _ = s.Close() }()
 
-	// Ensure schema exists
 	if err := s.EnsureSchema(); err != nil {
-		log.Fatalf("failed to init schema: %v", err)
+		log.Fatalf("failed to ensure schema: %v", err)
 	}
 
-	// Initialize router
-	r := apphttp.NewRouter(s)
+	// Metadata
+	tmdbClient := tmdb.New(tmdbKey)
+	enricher := metadata.NewTMDBEnricher(s, tmdbClient)
+
+	// Router
+	r := apphttp.NewRouter(s, enricher)
 
 	log.Printf("VIO listening on %s", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {

@@ -20,24 +20,28 @@ type Store interface {
 	ListMoviesByLibrary(libraryID int64) ([]domain.Movie, error)
 	GetMovie(id int64) (*domain.Movie, error)
 	GetMovieByTitleAndYear(title string, year int, libraryID int64) (*domain.Movie, error)
+	UpdateMovie(m *domain.Movie) error
 
 	// Series
 	CreateSeries(s *domain.Series) error
 	GetSeries(id int64) (*domain.Series, error)
 	GetSeriesByTitle(title string, libraryID int64) (*domain.Series, error)
 	ListSeries() ([]*domain.Series, error)
+	UpdateSeries(s *domain.Series) error
 
 	// Seasons
 	CreateSeason(season *domain.Season) error
 	GetSeason(id int64) (*domain.Season, error)
 	GetSeasonBySeriesAndNumber(seriesID int64, number int) (*domain.Season, error)
 	ListSeasonsBySeries(seriesID int64) ([]domain.Season, error)
+	UpdateSeason(season *domain.Season) error
 
 	// Episodes
 	CreateEpisode(ep *domain.Episode) error
 	GetEpisode(id int64) (*domain.Episode, error)
 	ListEpisodesBySeason(seasonID int64) ([]domain.Episode, error)
 	GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*domain.Episode, error)
+	UpdateEpisode(ep *domain.Episode) error
 
 	// Media files
 	CreateMediaFile(mf *domain.MediaFile) error

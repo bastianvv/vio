@@ -290,6 +290,34 @@ func (s *SQLiteStore) ListMoviesByLibrary(libraryID int64) ([]domain.Movie, erro
 	return result, rows.Err()
 }
 
+func (s *SQLiteStore) UpdateMovie(m *domain.Movie) error {
+	m.UpdatedAt = time.Now().UTC()
+
+	_, err := s.exec.Exec(`
+		UPDATE movies
+		SET
+			original_title = ?,
+			tmdb_id = ?,
+			overview = ?,
+			runtime_min = ?,
+			poster_path = ?,
+			backdrop_path = ?,
+			updated_at = ?
+		WHERE id = ?
+	`,
+		m.OriginalTitle,
+		m.TMDBID,
+		m.Overview,
+		m.RuntimeMin,
+		m.PosterPath,
+		m.BackdropPath,
+		m.UpdatedAt,
+		m.ID,
+	)
+
+	return err
+}
+
 // ============================================================================
 // Series / Seasons / Episodes
 // ============================================================================
@@ -669,6 +697,88 @@ func (s *SQLiteStore) ListEpisodesBySeason(seasonID int64) ([]domain.Episode, er
 		episodes = append(episodes, ep)
 	}
 	return episodes, rows.Err()
+}
+
+func (s *SQLiteStore) UpdateEpisode(e *domain.Episode) error {
+	e.UpdatedAt = time.Now().UTC()
+
+	_, err := s.exec.Exec(`
+		UPDATE episodes
+		SET
+			title = ?,
+			overview = ?,
+			air_date = ?,
+			runtime_min = ?,
+			still_path = ?,
+			tmdb_id = ?,
+			updated_at = ?
+		WHERE id = ?
+	`,
+		e.Title,
+		e.Overview,
+		e.AirDate,
+		e.RuntimeMin,
+		e.StillPath,
+		e.TMDBID,
+		e.UpdatedAt,
+		e.ID,
+	)
+
+	return err
+}
+
+func (s *SQLiteStore) UpdateSeries(sr *domain.Series) error {
+	sr.UpdatedAt = time.Now().UTC()
+
+	_, err := s.exec.Exec(`
+		UPDATE series
+		SET
+			original_title = ?,
+			tmdb_id = ?,
+			overview = ?,
+			status = ?,
+			poster_path = ?,
+			backdrop_path = ?,
+			updated_at = ?
+		WHERE id = ?
+	`,
+		sr.OriginalTitle,
+		sr.TMDBID,
+		sr.Overview,
+		sr.Status,
+		sr.PosterPath,
+		sr.BackdropPath,
+		sr.UpdatedAt,
+		sr.ID,
+	)
+
+	return err
+}
+
+func (s *SQLiteStore) UpdateSeason(se *domain.Season) error {
+	se.UpdatedAt = time.Now().UTC()
+
+	_, err := s.exec.Exec(`
+		UPDATE seasons
+		SET
+			title = ?,
+			overview = ?,
+			poster_path = ?,
+			air_date = ?,
+			tmdb_id = ?,
+			updated_at = ?
+		WHERE id = ?
+	`,
+		se.Title,
+		se.Overview,
+		se.PosterPath,
+		se.AirDate,
+		se.TMDBID,
+		se.UpdatedAt,
+		se.ID,
+	)
+
+	return err
 }
 
 // ============================================================================

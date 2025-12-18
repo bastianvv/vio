@@ -8,15 +8,23 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/bastianvv/vio/internal/http/dto"
+	"github.com/bastianvv/vio/internal/metadata"
 	"github.com/bastianvv/vio/internal/store"
 )
 
 type MoviesHandler struct {
-	store store.Store
+	store    store.Store
+	metadata metadata.Enricher
 }
 
-func NewMoviesHandler(s store.Store) *MoviesHandler {
-	return &MoviesHandler{store: s}
+func NewMoviesHandler(
+	store store.Store,
+	metadata metadata.Enricher,
+) *MoviesHandler {
+	return &MoviesHandler{
+		store:    store,
+		metadata: metadata,
+	}
 }
 
 // GET /api/movies?library_id=X
@@ -110,4 +118,31 @@ func (h *MoviesHandler) ListMediaFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, out)
+}
+
+func (h *MoviesHandler) EnrichMovie(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := h.metadata.EnrichMovie(r.Context(), id); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	movie, err := h.store.GetMovie(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]any{
+		"status":   "enriched",
+		"provider": "tmdb",
+		"movie":    dto.NewMovie(movie),
+	})
+
 }
