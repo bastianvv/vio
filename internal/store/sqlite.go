@@ -395,11 +395,29 @@ func (s *SQLiteStore) CreateSeason(se *domain.Season) error {
 	se.UpdatedAt = now
 
 	res, err := s.exec.Exec(`
-        INSERT INTO seasons (series_id, season_number, title, overview,
-                             poster_path, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, se.SeriesID, se.Number, se.Title, se.Overview,
-		se.PosterPath, se.CreatedAt, se.UpdatedAt)
+        INSERT INTO seasons (
+            series_id,
+            season_number,
+            title,
+            overview,
+            poster_path,
+            air_date,
+            tmdb_id,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+		se.SeriesID,
+		se.Number,
+		se.Title,
+		se.Overview,
+		se.PosterPath,
+		se.AirDate,
+		se.TMDBID,
+		se.CreatedAt,
+		se.UpdatedAt,
+	)
 	if err != nil {
 		return err
 	}
@@ -412,7 +430,7 @@ func (s *SQLiteStore) CreateSeason(se *domain.Season) error {
 func (s *SQLiteStore) GetSeasonBySeriesAndNumber(seriesID int64, number int) (*domain.Season, error) {
 	row := s.exec.QueryRow(`
         SELECT id, series_id, season_number, title, overview, poster_path,
-               created_at, updated_at
+               air_date, tmdb_id, created_at, updated_at
         FROM seasons
         WHERE series_id = ? AND season_number = ?
     `, seriesID, number)
@@ -425,6 +443,8 @@ func (s *SQLiteStore) GetSeasonBySeriesAndNumber(seriesID int64, number int) (*d
 		&se.Title,
 		&se.Overview,
 		&se.PosterPath,
+		&se.AirDate,
+		&se.TMDBID,
 		&se.CreatedAt,
 		&se.UpdatedAt,
 	)
@@ -442,7 +462,7 @@ func (s *SQLiteStore) GetSeasonBySeriesAndNumber(seriesID int64, number int) (*d
 func (s *SQLiteStore) GetSeason(id int64) (*domain.Season, error) {
 	row := s.exec.QueryRow(`
         SELECT id, series_id, season_number, title, overview, poster_path,
-               air_date, created_at, updated_at
+               air_date, tmdb_id, created_at, updated_at
         FROM seasons
         WHERE id = ?
     `, id)
@@ -456,6 +476,7 @@ func (s *SQLiteStore) GetSeason(id int64) (*domain.Season, error) {
 		&se.Overview,
 		&se.PosterPath,
 		&se.AirDate,
+		&se.TMDBID,
 		&se.CreatedAt,
 		&se.UpdatedAt,
 	)
@@ -468,7 +489,7 @@ func (s *SQLiteStore) GetSeason(id int64) (*domain.Season, error) {
 func (s *SQLiteStore) ListSeasonsBySeries(seriesID int64) ([]domain.Season, error) {
 	rows, err := s.exec.Query(`
         SELECT id, series_id, season_number, title, overview, poster_path,
-               air_date, created_at, updated_at
+               air_date, tmdb_id, created_at, updated_at
         FROM seasons
         WHERE series_id = ?
         ORDER BY season_number
@@ -489,6 +510,7 @@ func (s *SQLiteStore) ListSeasonsBySeries(seriesID int64) ([]domain.Season, erro
 			&se.Overview,
 			&se.PosterPath,
 			&se.AirDate,
+			&se.TMDBID,
 			&se.CreatedAt,
 			&se.UpdatedAt,
 		)
@@ -506,12 +528,31 @@ func (s *SQLiteStore) CreateEpisode(ep *domain.Episode) error {
 	ep.UpdatedAt = now
 
 	res, err := s.exec.Exec(`
-        INSERT INTO episodes (season_id, episode_number, title, overview,
-                              air_date, runtime_min, still_path, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, ep.SeasonID, ep.Number, ep.Title, ep.Overview,
-		ep.AirDate, ep.RuntimeMin, ep.StillPath,
-		ep.CreatedAt, ep.UpdatedAt)
+        INSERT INTO episodes (
+            season_id,
+            episode_number,
+            title,
+            overview,
+            air_date,
+            runtime_min,
+            still_path,
+            tmdb_id,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+		ep.SeasonID,
+		ep.Number,
+		ep.Title,
+		ep.Overview,
+		ep.AirDate,
+		ep.RuntimeMin,
+		ep.StillPath,
+		ep.TMDBID,
+		ep.CreatedAt,
+		ep.UpdatedAt,
+	)
 	if err != nil {
 		return err
 	}
@@ -525,13 +566,22 @@ func (s *SQLiteStore) GetEpisode(id int64) (*domain.Episode, error) {
 	var ep domain.Episode
 	err := s.exec.QueryRow(`
         SELECT id, season_id, episode_number, title, overview,
-               air_date, runtime_min, still_path, created_at, updated_at
+               air_date, runtime_min, still_path, tmdb_id,
+               created_at, updated_at
         FROM episodes
         WHERE id = ?
     `, id).Scan(
-		&ep.ID, &ep.SeasonID, &ep.Number, &ep.Title, &ep.Overview,
-		&ep.AirDate, &ep.RuntimeMin, &ep.StillPath,
-		&ep.CreatedAt, &ep.UpdatedAt,
+		&ep.ID,
+		&ep.SeasonID,
+		&ep.Number,
+		&ep.Title,
+		&ep.Overview,
+		&ep.AirDate,
+		&ep.RuntimeMin,
+		&ep.StillPath,
+		&ep.TMDBID,
+		&ep.CreatedAt,
+		&ep.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -541,8 +591,9 @@ func (s *SQLiteStore) GetEpisode(id int64) (*domain.Episode, error) {
 
 func (s *SQLiteStore) GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*domain.Episode, error) {
 	row := s.exec.QueryRow(`
-        SELECT id, season_id, episode_number, title, overview, air_date, runtime_min,
-               still_path, created_at, updated_at
+        SELECT id, season_id, episode_number, title, overview,
+               air_date, runtime_min, still_path, tmdb_id,
+               created_at, updated_at
         FROM episodes
         WHERE season_id = ? AND episode_number = ?
     `, seasonID, number)
@@ -557,6 +608,7 @@ func (s *SQLiteStore) GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*
 		&ep.AirDate,
 		&ep.RuntimeMin,
 		&ep.StillPath,
+		&ep.TMDBID,
 		&ep.CreatedAt,
 		&ep.UpdatedAt,
 	)
@@ -573,8 +625,9 @@ func (s *SQLiteStore) GetEpisodeBySeasonAndNumber(seasonID int64, number int) (*
 
 func (s *SQLiteStore) ListEpisodesBySeason(seasonID int64) ([]domain.Episode, error) {
 	rows, err := s.exec.Query(`
-        SELECT id, season_id, episode_number, title, overview, air_date,
-               runtime_min, still_path, created_at, updated_at
+        SELECT id, season_id, episode_number, title, overview,
+               air_date, runtime_min, still_path, tmdb_id,
+               created_at, updated_at
         FROM episodes
         WHERE season_id = ?
         ORDER BY episode_number
@@ -588,9 +641,17 @@ func (s *SQLiteStore) ListEpisodesBySeason(seasonID int64) ([]domain.Episode, er
 	for rows.Next() {
 		var ep domain.Episode
 		err := rows.Scan(
-			&ep.ID, &ep.SeasonID, &ep.Number, &ep.Title, &ep.Overview,
-			&ep.AirDate, &ep.RuntimeMin, &ep.StillPath,
-			&ep.CreatedAt, &ep.UpdatedAt,
+			&ep.ID,
+			&ep.SeasonID,
+			&ep.Number,
+			&ep.Title,
+			&ep.Overview,
+			&ep.AirDate,
+			&ep.RuntimeMin,
+			&ep.StillPath,
+			&ep.TMDBID,
+			&ep.CreatedAt,
+			&ep.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -704,12 +765,13 @@ func (s *SQLiteStore) CreateMediaFile(mf *domain.MediaFile) error {
 
 func (s *SQLiteStore) CreateMediaFileEpisode(link *domain.MediaFileEpisode) error {
 	res, err := s.exec.Exec(`
-        INSERT INTO media_file_episodes (media_file_id, episode_id)
+        INSERT OR IGNORE INTO media_file_episodes (media_file_id, episode_id)
         VALUES (?, ?)
     `, link.MediaFileID, link.EpisodeID)
 	if err != nil {
 		return err
 	}
+
 	id, _ := res.LastInsertId()
 	link.ID = id
 	return nil
@@ -718,7 +780,8 @@ func (s *SQLiteStore) CreateMediaFileEpisode(link *domain.MediaFileEpisode) erro
 func (s *SQLiteStore) ListEpisodesByMediaFile(mediaFileID int64) ([]domain.Episode, error) {
 	rows, err := s.exec.Query(`
         SELECT e.id, e.season_id, e.episode_number, e.title, e.overview,
-               e.air_date, e.runtime_min, e.still_path, e.created_at, e.updated_at
+               e.air_date, e.runtime_min, e.still_path, e.tmdb_id,
+               e.created_at, e.updated_at
         FROM media_file_episodes mfe
         JOIN episodes e ON e.id = mfe.episode_id
         WHERE mfe.media_file_id = ?
@@ -741,6 +804,7 @@ func (s *SQLiteStore) ListEpisodesByMediaFile(mediaFileID int64) ([]domain.Episo
 			&ep.AirDate,
 			&ep.RuntimeMin,
 			&ep.StillPath,
+			&ep.TMDBID,
 			&ep.CreatedAt,
 			&ep.UpdatedAt,
 		)
@@ -835,9 +899,14 @@ func (s *SQLiteStore) GetMediaFileByPath(path string) (*domain.MediaFile, error)
 		SELECT
 			id,
 			library_id,
+			movie_id,
+			episode_id,
 			path,
 			size_bytes,
 			hash,
+			is_missing,
+			missing_since,
+			last_seen_at,
 			container,
 			video_codec,
 			audio_codec,
@@ -845,21 +914,25 @@ func (s *SQLiteStore) GetMediaFileByPath(path string) (*domain.MediaFile, error)
 			video_height,
 			audio_channels,
 			duration_sec,
-			movie_id,
-			episode_id
+			created_at,
+			updated_at
 		FROM media_files
 		WHERE path = ?
 		LIMIT 1
 	`
 
 	var mf domain.MediaFile
-
 	err := s.exec.QueryRow(q, path).Scan(
 		&mf.ID,
 		&mf.LibraryID,
+		&mf.MovieID,
+		&mf.EpisodeID,
 		&mf.Path,
 		&mf.SizeBytes,
 		&mf.Hash,
+		&mf.IsMissing,
+		&mf.MissingSince,
+		&mf.LastSeenAt,
 		&mf.Container,
 		&mf.VideoCodec,
 		&mf.AudioCodec,
@@ -867,8 +940,8 @@ func (s *SQLiteStore) GetMediaFileByPath(path string) (*domain.MediaFile, error)
 		&mf.VideoHeight,
 		&mf.AudioChannels,
 		&mf.DurationSec,
-		&mf.MovieID,
-		&mf.EpisodeID,
+		&mf.CreatedAt,
+		&mf.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {

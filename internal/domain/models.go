@@ -53,6 +53,7 @@ type Season struct {
 	ID         int64      `json:"id"`
 	SeriesID   int64      `json:"series_id"`
 	Number     int        `json:"number"`
+	TMDBID     *string    `json:"tmdb_id,omitempty"`
 	Title      string     `json:"title"`
 	Overview   string     `json:"overview"`
 	PosterPath *string    `json:"poster_path,omitempty"`
@@ -65,6 +66,7 @@ type Episode struct {
 	ID         int64      `json:"id"`
 	SeasonID   int64      `json:"season_id"`
 	Number     int        `json:"number"`
+	TMDBID     *string    `json:"tmdb_id,omitempty"`
 	Title      string     `json:"title"`
 	Overview   string     `json:"overview"`
 	AirDate    *time.Time `json:"air_date,omitempty"`

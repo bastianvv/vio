@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{base_url}}{{api_path}}{{libraries_path}}/1/rescan
+  url: {{base_url}}{{api_path}}{{libraries_path}}/2/rescan
   body: none
   auth: inherit
 }
@@ -24,7 +24,7 @@ tests {
   });
   
   test("Scan does not delete media", () => {
-    expect(res.body.errors).to.be.an("array");
+    expect(res.body.Errors).to.be.null;
   });
 }
 
