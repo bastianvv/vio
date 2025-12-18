@@ -14,7 +14,7 @@ import (
 func main() {
 	dbPath := envOr("VIO_DB", "vio.db")
 	addr := envOr("VIO_ADDR", ":8080")
-	tmdbKey := "487de335e804022ee3538ab055bd2b53" //os.Getenv("TMDB_API_KEY")
+	tmdbKey := os.Getenv("TMDB_API_KEY")
 
 	if tmdbKey == "" {
 		log.Fatal("TMDB_API_KEY is required")
