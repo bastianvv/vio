@@ -78,3 +78,96 @@ func (e *TMDBEnricher) EnrichMovie(ctx context.Context, movieID int64) error {
 	// 4) Persist
 	return e.store.UpdateMovie(movie)
 }
+
+func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
+
+	series, err := e.store.GetSeries(seriesID)
+	if err != nil {
+		return err
+	}
+	if series == nil {
+		return errors.New("series not found")
+	}
+
+	// 1) Resolve TMDB ID
+	if series.TMDBID == nil {
+		results, err := e.tmdb.SearchTV(ctx, series.Title)
+		if err != nil {
+			return err
+		}
+		if len(results) == 0 {
+			return fmt.Errorf("no tmdb tv match for %q", series.Title)
+		}
+
+		best := results[0]
+		series.TMDBID = &best.ID
+	}
+
+	// 2) Fetch TV details
+	details, err := e.tmdb.GetTV(ctx, *series.TMDBID)
+	if err != nil {
+		return err
+	}
+
+	series.OriginalTitle = details.OriginalName
+	series.Overview = details.Overview
+	series.Status = details.Status
+	series.PosterPath = details.PosterPath
+	series.BackdropPath = details.BackdropPath
+
+	if err := e.store.UpdateSeries(series); err != nil {
+		return err
+	}
+
+	// 3) Seasons
+	for _, s := range details.Seasons {
+
+		season, err := e.store.GetSeasonBySeriesAndNumber(series.ID, s.Number)
+		if err != nil {
+			return err
+		}
+		if season == nil {
+			continue // created by scanner only
+		}
+
+		if season.TMDBID == nil {
+			season.TMDBID = &s.ID
+		}
+
+		season.Title = s.Title
+		season.Overview = s.Overview
+		season.PosterPath = s.PosterPath
+
+		if err := e.store.UpdateSeason(season); err != nil {
+			return err
+		}
+
+		// 4) Episodes
+		eps, err := e.tmdb.GetSeason(ctx, *series.TMDBID, s.Number)
+		if err != nil {
+			return err
+		}
+
+		for _, te := range eps {
+			ep, err := e.store.GetEpisodeBySeasonAndNumber(season.ID, te.Number)
+			if err != nil || ep == nil {
+				continue
+			}
+
+			if ep.TMDBID == nil {
+				ep.TMDBID = &te.ID
+			}
+
+			ep.Title = te.Title
+			ep.Overview = te.Overview
+			ep.RuntimeMin = te.RuntimeMin
+			ep.StillPath = te.StillPath
+
+			if err := e.store.UpdateEpisode(ep); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}

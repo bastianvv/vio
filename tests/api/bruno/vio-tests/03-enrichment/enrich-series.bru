@@ -1,0 +1,37 @@
+meta {
+  name: enrich-series
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}{{api_path}}{{series_path}}/1/enrich
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("Series is returned", () => {
+    expect(res.body).to.be.an("object");
+  });
+  
+  test("Series data is enriched", () => {
+    expect(res.body.series.tmdb_id).to.exist;
+    expect(res.body.series.tmdb_id).to.not.be.null;
+    expect(res.body.series.overview).to.exist;
+    expect(res.body.series.overview).to.not.be.null;
+    expect(res.body.series.poster_path).to.exist;
+    expect(res.body.series.poster_path).to.not.be.null;
+    expect(res.body.series.backdrop_path).to.exist;
+    expect(res.body.series.backdrop_path).to.not.be.null;
+    expect(res.body.provider).to.exist;
+    expect(res.body.provider).to.not.be.null;
+    expect(res.body.status).to.exist;
+    expect(res.body.status).to.be.equals("enriched");
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

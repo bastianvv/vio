@@ -7,15 +7,17 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/bastianvv/vio/internal/http/dto"
+	"github.com/bastianvv/vio/internal/metadata"
 	"github.com/bastianvv/vio/internal/store"
 )
 
 type SeriesHandler struct {
-	store store.Store
+	store    store.Store
+	metadata metadata.Enricher
 }
 
-func NewSeriesHandler(s store.Store) *SeriesHandler {
-	return &SeriesHandler{store: s}
+func NewSeriesHandler(s store.Store, metadata metadata.Enricher) *SeriesHandler {
+	return &SeriesHandler{store: s, metadata: metadata}
 }
 
 func (h *SeriesHandler) ListSeries(w http.ResponseWriter, r *http.Request) {
@@ -62,4 +64,30 @@ func (h *SeriesHandler) ListSeasonsBySeries(w http.ResponseWriter, r *http.Reque
 	}
 
 	writeJSON(w, out)
+}
+
+func (h *SeriesHandler) EnrichSeries(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if err := h.metadata.EnrichSeries(r.Context(), id); err != nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	series, err := h.store.GetSeries(id)
+	if err != nil || series == nil {
+		writeError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, map[string]any{
+		"status":   "enriched",
+		"provider": "tmdb",
+		"series":   dto.NewSeries(series),
+	})
 }

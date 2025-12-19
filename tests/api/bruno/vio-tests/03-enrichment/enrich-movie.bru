@@ -1,11 +1,11 @@
 meta {
   name: enrich-movie
   type: http
-  seq: 5
+  seq: 1
 }
 
 post {
-  url: http://localhost:8080/api/movies/2/enrich
+  url: {{base_url}}{{api_path}}{{movies_path}}/2/enrich
   body: none
   auth: inherit
 }

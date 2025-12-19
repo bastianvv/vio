@@ -17,7 +17,7 @@ func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 	// Initialize split handlers
 	scanner := media.NewScanner(s)
 	scans := scan.NewRegistry()
-	seriesHandler := NewSeriesHandler(s)
+	seriesHandler := NewSeriesHandler(s, enricher)
 	seasonsHandler := NewSeasonsHandler(s)
 	episodesHandler := NewEpisodesHandler(s)
 	moviesHandler := NewMoviesHandler(s, enricher)
@@ -43,6 +43,7 @@ func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 	r.Get("/api/series", seriesHandler.ListSeries)
 	r.Get("/api/series/{id}", seriesHandler.GetSeries)
 	r.Get("/api/series/{id}/seasons", seasonsHandler.ListSeasonsBySeries)
+	r.Post("/api/series/{id}/enrich", seriesHandler.EnrichSeries)
 
 	// ---- Seasons ----
 	r.Get("/api/seasons/{id}", seasonsHandler.GetSeason)
