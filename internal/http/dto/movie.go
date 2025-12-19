@@ -11,11 +11,11 @@ type Movie struct {
 	TMDBID        *string `json:"tmdb_id,omitempty"`
 	Overview      string  `json:"overview,omitempty"`
 	RuntimeMin    int     `json:"runtime_min,omitempty"`
-	PosterPath    *string `json:"poster_path,omitempty"`
-	BackdropPath  *string `json:"backdrop_path,omitempty"`
+	HasPoster     bool    `json:"has_poster"`
+	HasBackdrop   bool    `json:"has_backdrop"`
 }
 
-func NewMovie(m *domain.Movie) *Movie {
+func NewMovie(m *domain.Movie, hasPoster, hasBackdrop bool) *Movie {
 	return &Movie{
 		ID:            m.ID,
 		LibraryID:     m.LibraryID,
@@ -25,7 +25,7 @@ func NewMovie(m *domain.Movie) *Movie {
 		TMDBID:        m.TMDBID,
 		Overview:      m.Overview,
 		RuntimeMin:    m.RuntimeMin,
-		PosterPath:    m.PosterPath,
-		BackdropPath:  m.BackdropPath,
+		HasPoster:     hasPoster,
+		HasBackdrop:   hasBackdrop,
 	}
 }

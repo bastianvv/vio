@@ -171,20 +171,17 @@ func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
 		season.Overview = s.Overview
 
 		if s.PosterPath != nil {
-			local, err := cacheTMDBImage(
+			_, err := cacheTMDBImage(
 				ctx,
 				e.imageBase,
-				"series",
-				series.ID,
-				fmt.Sprintf("seasons/%d/poster", season.Number),
+				"seasons",
+				season.ID,
+				"poster",
 				*s.PosterPath,
 			)
 			if err != nil {
 				return err
 			}
-
-			rel, _ := filepath.Rel(e.imageBase, local)
-			season.PosterPath = &rel
 		}
 
 		if err := e.store.UpdateSeason(season); err != nil {
@@ -212,20 +209,17 @@ func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
 			ep.RuntimeMin = te.RuntimeMin
 
 			if te.StillPath != nil {
-				local, err := cacheTMDBImage(
+				_, err := cacheTMDBImage(
 					ctx,
 					e.imageBase,
-					"series",
-					series.ID,
-					fmt.Sprintf("episodes/S%02dE%02d", season.Number, ep.Number),
+					"episodes",
+					ep.ID,
+					"still",
 					*te.StillPath,
 				)
 				if err != nil {
 					return err
 				}
-
-				rel, _ := filepath.Rel(e.imageBase, local)
-				ep.StillPath = &rel
 			}
 
 			if err := e.store.UpdateEpisode(ep); err != nil {

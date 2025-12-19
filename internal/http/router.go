@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,32 +11,20 @@ import (
 	"github.com/bastianvv/vio/internal/store"
 )
 
-func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
+func NewRouter(s store.Store, enricher metadata.Enricher, imageBaseDir string) http.Handler {
 	r := chi.NewRouter()
 
-	imageBasePath := "./data/images"
-	absImagePath, err := filepath.Abs(imageBasePath)
-	if err != nil {
-		panic(err)
-	}
-
-	r.Handle(
-		"/images/*",
-		http.StripPrefix(
-			"/images/",
-			http.FileServer(http.Dir(absImagePath)),
-		),
-	)
 	// Initialize split handlers
 	scanner := media.NewScanner(s)
 	scans := scan.NewRegistry()
-	seriesHandler := NewSeriesHandler(s, enricher)
-	seasonsHandler := NewSeasonsHandler(s)
-	episodesHandler := NewEpisodesHandler(s)
-	moviesHandler := NewMoviesHandler(s, enricher)
+	seriesHandler := NewSeriesHandler(s, enricher, imageBaseDir)
+	seasonsHandler := NewSeasonsHandler(s, imageBaseDir)
+	episodesHandler := NewEpisodesHandler(s, imageBaseDir)
+	moviesHandler := NewMoviesHandler(s, enricher, imageBaseDir)
 	librariesHandler := NewLibrariesHandler(s, scanner, scans)
 	filesHandler := NewFilesHandler(s)
 	subtitlesHandler := NewSubtitlesHandler(s)
+	imageHandler := NewImageHandler(imageBaseDir)
 
 	// ---- Libraries ----
 	r.Get("/api/libraries", librariesHandler.ListLibraries)
@@ -76,6 +63,9 @@ func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 
 	// --- Scanner ---
 	r.Get("/api/scans/{job_id}", librariesHandler.GetScanJob)
+
+	// --- Images ---
+	r.Get("/api/images/{entity}/{id}/{kind}", imageHandler.ServeImage)
 
 	return r
 }

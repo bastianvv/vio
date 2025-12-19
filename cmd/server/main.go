@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	apphttp "github.com/bastianvv/vio/internal/http"
 	"github.com/bastianvv/vio/internal/metadata"
@@ -37,15 +38,20 @@ func main() {
 
 	// Metadata
 	imageBasePath := os.Getenv("IMAGE_CACHE_DIR")
+	absImagePath, err := filepath.Abs(imageBasePath)
+	if err != nil {
+		panic(err)
+	}
+
 	tmdbClient := tmdb.New(tmdbKey)
-	enricher := metadata.NewTMDBEnricher(s, tmdbClient, imageBasePath)
+	enricher := metadata.NewTMDBEnricher(s, tmdbClient, absImagePath)
 
 	if err := os.MkdirAll(imageBasePath, 0755); err != nil {
 		log.Fatalf("failed to create image cache dir: %v", err)
 	}
 
 	// Router
-	r := apphttp.NewRouter(s, enricher)
+	r := apphttp.NewRouter(s, enricher, absImagePath)
 
 	log.Printf("VIO listening on %s", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {

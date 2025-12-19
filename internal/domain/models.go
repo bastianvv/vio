@@ -60,6 +60,7 @@ type Season struct {
 	AirDate    *time.Time `json:"air_date,omitempty"`
 	CreatedAt  time.Time  `json:"created_at"`
 	UpdatedAt  time.Time  `json:"updated_at"`
+	HasPoster  bool       `json:"has_poster"`
 }
 
 type Episode struct {

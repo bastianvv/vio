@@ -2,6 +2,8 @@ package http
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/bastianvv/vio/internal/http/dto"
@@ -10,11 +12,12 @@ import (
 )
 
 type EpisodesHandler struct {
-	store store.Store
+	store        store.Store
+	imageBaseDir string
 }
 
-func NewEpisodesHandler(s store.Store) *EpisodesHandler {
-	return &EpisodesHandler{store: s}
+func NewEpisodesHandler(s store.Store, imageBaseDir string) *EpisodesHandler {
+	return &EpisodesHandler{store: s, imageBaseDir: imageBaseDir}
 }
 
 func (h *EpisodesHandler) GetEpisode(w http.ResponseWriter, r *http.Request) {
@@ -26,8 +29,9 @@ func (h *EpisodesHandler) GetEpisode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, dto.NewEpisode(ep))
+	writeJSON(w, dto.NewEpisode(ep, h.episodeHasStill(ep.ID)))
 }
+
 func (h *EpisodesHandler) ListEpisodesBySeason(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	seasonID, err := strconv.ParseInt(idStr, 10, 64)
@@ -44,7 +48,8 @@ func (h *EpisodesHandler) ListEpisodesBySeason(w http.ResponseWriter, r *http.Re
 
 	out := make([]*dto.Episode, 0, len(episodes))
 	for i := range episodes {
-		out = append(out, dto.NewEpisode(&episodes[i]))
+		ep := &episodes[i]
+		out = append(out, dto.NewEpisode(ep, h.episodeHasStill(ep.ID)))
 	}
 
 	writeJSON(w, out)
@@ -70,4 +75,10 @@ func (h *EpisodesHandler) ListEpisodeFiles(w http.ResponseWriter, r *http.Reques
 	}
 
 	writeJSON(w, out)
+}
+
+func (h *EpisodesHandler) episodeHasStill(id int64) bool {
+	dir := filepath.Join(h.imageBaseDir, "episodes", strconv.FormatInt(id, 10))
+	_, err := os.Stat(filepath.Join(dir, "still.jpg"))
+	return err == nil
 }

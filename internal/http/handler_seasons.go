@@ -2,6 +2,8 @@ package http
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/bastianvv/vio/internal/http/dto"
@@ -10,11 +12,12 @@ import (
 )
 
 type SeasonsHandler struct {
-	store store.Store
+	store        store.Store
+	imageBaseDir string
 }
 
-func NewSeasonsHandler(s store.Store) *SeasonsHandler {
-	return &SeasonsHandler{store: s}
+func NewSeasonsHandler(s store.Store, imageBaseDir string) *SeasonsHandler {
+	return &SeasonsHandler{store: s, imageBaseDir: imageBaseDir}
 }
 
 func (h *SeasonsHandler) GetSeason(w http.ResponseWriter, r *http.Request) {
@@ -26,25 +29,9 @@ func (h *SeasonsHandler) GetSeason(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, dto.NewSeason(se))
+	writeJSON(w, dto.NewSeason(se, h.seasonHasPoster(se.ID)))
 }
 
-func (h *SeasonsHandler) ListEpisodesBySeason(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-
-	episodes, err := h.store.ListEpisodesBySeason(id)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	out := make([]*dto.Episode, 0, len(episodes))
-	for i := range episodes {
-		out = append(out, dto.NewEpisode(&episodes[i]))
-	}
-
-	writeJSON(w, out)
-}
 func (h *SeasonsHandler) ListSeasonsBySeries(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	seriesID, err := strconv.ParseInt(idStr, 10, 64)
@@ -61,8 +48,31 @@ func (h *SeasonsHandler) ListSeasonsBySeries(w http.ResponseWriter, r *http.Requ
 
 	out := make([]*dto.Season, 0, len(seasons))
 	for i := range seasons {
-		out = append(out, dto.NewSeason(&seasons[i]))
+		se := &seasons[i]
+		out = append(out, dto.NewSeason(se, h.seasonHasPoster(se.ID)))
 	}
 
 	writeJSON(w, out)
+}
+
+func (h *SeasonsHandler) seasonHasPoster(seasonID int64) bool {
+	dir := filepath.Join(
+		h.imageBaseDir,
+		"seasons",
+		strconv.FormatInt(seasonID, 10),
+	)
+	candidates := []string{
+		"poster.webp",
+		"poster.jpg",
+		"poster.jpeg",
+		"poster.png",
+	}
+
+	for _, name := range candidates {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+
+	return false
 }

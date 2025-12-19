@@ -3,6 +3,8 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -13,17 +15,20 @@ import (
 )
 
 type MoviesHandler struct {
-	store    store.Store
-	metadata metadata.Enricher
+	store        store.Store
+	metadata     metadata.Enricher
+	imageBaseDir string
 }
 
 func NewMoviesHandler(
 	store store.Store,
 	metadata metadata.Enricher,
+	imageBaseDir string,
 ) *MoviesHandler {
 	return &MoviesHandler{
-		store:    store,
-		metadata: metadata,
+		store:        store,
+		metadata:     metadata,
+		imageBaseDir: imageBaseDir,
 	}
 }
 
@@ -47,8 +52,13 @@ func (h *MoviesHandler) ListMovies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := make([]*dto.Movie, 0, len(movies))
-	for _, m := range movies {
-		out = append(out, dto.NewMovie(&m))
+	for i := range movies {
+		m := &movies[i]
+		out = append(out, dto.NewMovie(
+			m,
+			h.movieHasPoster(m.ID),
+			h.movieHasBackdrop(m.ID),
+		))
 	}
 
 	writeJSON(w, out)
@@ -69,7 +79,12 @@ func (h *MoviesHandler) GetMovie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, dto.NewMovie(movie))
+	writeJSON(w, dto.NewMovie(
+		movie,
+		h.movieHasPoster(movie.ID),
+		h.movieHasBackdrop(movie.ID),
+	))
+
 }
 
 // GET /api/movies/{id}/files
@@ -142,7 +157,27 @@ func (h *MoviesHandler) EnrichMovie(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"status":   "enriched",
 		"provider": "tmdb",
-		"movie":    dto.NewMovie(movie),
+		"movie":    dto.NewMovie(movie, h.movieHasPoster(movie.ID), h.movieHasBackdrop(movie.ID)),
 	})
 
+}
+
+func (h *MoviesHandler) movieHasPoster(id int64) bool {
+	_, err := os.Stat(filepath.Join(
+		h.imageBaseDir,
+		"movies",
+		strconv.FormatInt(id, 10),
+		"poster.jpg",
+	))
+	return err == nil
+}
+
+func (h *MoviesHandler) movieHasBackdrop(id int64) bool {
+	_, err := os.Stat(filepath.Join(
+		h.imageBaseDir,
+		"movies",
+		strconv.FormatInt(id, 10),
+		"backdrop.jpg",
+	))
+	return err == nil
 }

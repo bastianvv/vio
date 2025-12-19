@@ -10,11 +10,11 @@ type Series struct {
 	TMDBID        *string `json:"tmdb_id,omitempty"`
 	Overview      string  `json:"overview,omitempty"`
 	Status        string  `json:"status,omitempty"`
-	PosterPath    *string `json:"poster_path,omitempty"`
-	BackdropPath  *string `json:"backdrop_path,omitempty"`
+	HasPoster     bool    `json:"has_poster"`
+	HasBackdrop   bool    `json:"has_backdrop"`
 }
 
-func NewSeries(s *domain.Series) *Series {
+func NewSeries(s *domain.Series, hasPoster, hasBackdrop bool) *Series {
 	if s == nil {
 		return nil
 	}
@@ -27,7 +27,7 @@ func NewSeries(s *domain.Series) *Series {
 		TMDBID:        s.TMDBID,
 		Overview:      s.Overview,
 		Status:        s.Status,
-		PosterPath:    s.PosterPath,
-		BackdropPath:  s.BackdropPath,
+		HasPoster:     hasPoster,
+		HasBackdrop:   hasBackdrop,
 	}
 }
