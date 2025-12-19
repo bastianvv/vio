@@ -36,8 +36,13 @@ func main() {
 	}
 
 	// Metadata
+	imageBasePath := os.Getenv("IMAGE_CACHE_DIR")
 	tmdbClient := tmdb.New(tmdbKey)
-	enricher := metadata.NewTMDBEnricher(s, tmdbClient)
+	enricher := metadata.NewTMDBEnricher(s, tmdbClient, imageBasePath)
+
+	if err := os.MkdirAll(imageBasePath, 0755); err != nil {
+		log.Fatalf("failed to create image cache dir: %v", err)
+	}
 
 	// Router
 	r := apphttp.NewRouter(s, enricher)

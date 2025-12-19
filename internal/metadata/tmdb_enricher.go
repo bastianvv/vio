@@ -4,20 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/bastianvv/vio/internal/metadata/tmdb"
 	"github.com/bastianvv/vio/internal/store"
 )
 
 type TMDBEnricher struct {
-	store store.Store
-	tmdb  *tmdb.Client
+	store     store.Store
+	tmdb      *tmdb.Client
+	imageBase string
 }
 
-func NewTMDBEnricher(store store.Store, tmdbClient *tmdb.Client) *TMDBEnricher {
+func NewTMDBEnricher(store store.Store, tmdbClient *tmdb.Client, imageBase string) *TMDBEnricher {
 	return &TMDBEnricher{
-		store: store,
-		tmdb:  tmdbClient,
+		store:     store,
+		tmdb:      tmdbClient,
+		imageBase: imageBase,
 	}
 }
 
@@ -75,6 +78,42 @@ func (e *TMDBEnricher) EnrichMovie(ctx context.Context, movieID int64) error {
 		movie.Year = details.ReleaseYear
 	}
 
+	// Cache poster
+	if details.PosterPath != nil {
+		local, err := cacheTMDBImage(
+			ctx,
+			e.imageBase,
+			"movies",
+			movie.ID,
+			"poster",
+			*details.PosterPath,
+		)
+		if err != nil {
+			return err
+		}
+
+		rel, _ := filepath.Rel(e.imageBase, local)
+		movie.PosterPath = &rel
+	}
+
+	// Cache backdrop
+	if details.BackdropPath != nil {
+		local, err := cacheTMDBImage(
+			ctx,
+			e.imageBase,
+			"movies",
+			movie.ID,
+			"backdrop",
+			*details.BackdropPath,
+		)
+		if err != nil {
+			return err
+		}
+
+		rel, _ := filepath.Rel(e.imageBase, local)
+		movie.BackdropPath = &rel
+	}
+
 	// 4) Persist
 	return e.store.UpdateMovie(movie)
 }
@@ -112,12 +151,6 @@ func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
 	series.OriginalTitle = details.OriginalName
 	series.Overview = details.Overview
 	series.Status = details.Status
-	series.PosterPath = details.PosterPath
-	series.BackdropPath = details.BackdropPath
-
-	if err := e.store.UpdateSeries(series); err != nil {
-		return err
-	}
 
 	// 3) Seasons
 	for _, s := range details.Seasons {
@@ -136,7 +169,23 @@ func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
 
 		season.Title = s.Title
 		season.Overview = s.Overview
-		season.PosterPath = s.PosterPath
+
+		if s.PosterPath != nil {
+			local, err := cacheTMDBImage(
+				ctx,
+				e.imageBase,
+				"series",
+				series.ID,
+				fmt.Sprintf("seasons/%d/poster", season.Number),
+				*s.PosterPath,
+			)
+			if err != nil {
+				return err
+			}
+
+			rel, _ := filepath.Rel(e.imageBase, local)
+			season.PosterPath = &rel
+		}
 
 		if err := e.store.UpdateSeason(season); err != nil {
 			return err
@@ -161,12 +210,68 @@ func (e *TMDBEnricher) EnrichSeries(ctx context.Context, seriesID int64) error {
 			ep.Title = te.Title
 			ep.Overview = te.Overview
 			ep.RuntimeMin = te.RuntimeMin
-			ep.StillPath = te.StillPath
+
+			if te.StillPath != nil {
+				local, err := cacheTMDBImage(
+					ctx,
+					e.imageBase,
+					"series",
+					series.ID,
+					fmt.Sprintf("episodes/S%02dE%02d", season.Number, ep.Number),
+					*te.StillPath,
+				)
+				if err != nil {
+					return err
+				}
+
+				rel, _ := filepath.Rel(e.imageBase, local)
+				ep.StillPath = &rel
+			}
 
 			if err := e.store.UpdateEpisode(ep); err != nil {
 				return err
 			}
 		}
+	}
+
+	// Cache poster
+	if details.PosterPath != nil {
+		local, err := cacheTMDBImage(
+			ctx,
+			e.imageBase,
+			"series",
+			series.ID,
+			"poster",
+			*details.PosterPath,
+		)
+		if err != nil {
+			return err
+		}
+
+		rel, _ := filepath.Rel(e.imageBase, local)
+		series.PosterPath = &rel
+	}
+
+	// Cache backdrop
+	if details.BackdropPath != nil {
+		local, err := cacheTMDBImage(
+			ctx,
+			e.imageBase,
+			"series",
+			series.ID,
+			"backdrop",
+			*details.BackdropPath,
+		)
+		if err != nil {
+			return err
+		}
+
+		rel, _ := filepath.Rel(e.imageBase, local)
+		series.BackdropPath = &rel
+	}
+
+	if err := e.store.UpdateSeries(series); err != nil {
+		return err
 	}
 
 	return nil

@@ -1,0 +1,16 @@
+meta {
+  name: get-episode-image
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}{{images_path}}{{series_path}}/1/episodes/S01E03.jpg
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

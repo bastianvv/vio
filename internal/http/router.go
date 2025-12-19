@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 
@@ -14,6 +15,19 @@ import (
 func NewRouter(s store.Store, enricher metadata.Enricher) http.Handler {
 	r := chi.NewRouter()
 
+	imageBasePath := "./data/images"
+	absImagePath, err := filepath.Abs(imageBasePath)
+	if err != nil {
+		panic(err)
+	}
+
+	r.Handle(
+		"/images/*",
+		http.StripPrefix(
+			"/images/",
+			http.FileServer(http.Dir(absImagePath)),
+		),
+	)
 	// Initialize split handlers
 	scanner := media.NewScanner(s)
 	scans := scan.NewRegistry()

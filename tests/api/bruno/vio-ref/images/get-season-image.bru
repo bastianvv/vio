@@ -1,0 +1,16 @@
+meta {
+  name: get-season-image
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}{{images_path}}{{series_path}}/1/seasons/1/poster.jpg
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
