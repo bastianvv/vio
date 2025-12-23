@@ -5,13 +5,19 @@ import { getLibraries } from "../../api/libraries";
 import { getMovies } from "../../api/movies";
 import type { Movie } from "../../api/movies";
 import type { Library } from "../../api/libraries";
-
+import { enrichMovie } from "../../api/enrich";
+import { registerEnrichHandler } from "../../state/enrichActions";
 import { onScanFinished } from "../../state/scanEvents";
 import PosterGrid from "../../components/PosterGrid";
 
 export default function MoviesPage() {
   const [movies, setMovies] = useState<Movie[] | null>(null);
   const [library, setLibrary] = useState<Library | null>(null);
+
+  async function enrichAllMovies() {
+    if (!movies) return;
+    await Promise.all(movies.map((m) => enrichMovie(m.id)));
+  }
 
   async function loadMovies() {
     try {
@@ -32,6 +38,16 @@ export default function MoviesPage() {
       setMovies([]);
     }
   }
+
+  useEffect(() => {
+    if (movies && movies.length > 0) {
+      registerEnrichHandler(enrichAllMovies);
+    } else {
+      registerEnrichHandler(null);
+    }
+
+    return () => registerEnrichHandler(null);
+  }, [movies]);
 
   // Initial load (mount only)
   useEffect(() => {

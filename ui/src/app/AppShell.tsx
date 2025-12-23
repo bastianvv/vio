@@ -17,11 +17,12 @@ export default function AppShell({ children }: Props) {
         sx={{
           flexGrow: 1,
           p: 2,
-          mt: "64px", // height of AppBar
-          ml: "240px", // width of Sidebar
+          mt: "64px",
+          ml: "240px",
         }}
       >
-        {children}
+        {/* Inject a setter into pages */}
+        {children}{" "}
       </Box>
     </Box>
   );

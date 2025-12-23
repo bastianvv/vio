@@ -5,6 +5,8 @@ import { getLibraries } from "../../api/libraries";
 import { getSeries } from "../../api/series";
 import type { Series } from "../../api/series";
 import type { Library } from "../../api/libraries";
+import { enrichSeries } from "../../api/enrich";
+import { registerEnrichHandler } from "../../state/enrichActions";
 
 import { onScanFinished } from "../../state/scanEvents";
 import PosterGrid from "../../components/PosterGrid";
@@ -12,6 +14,11 @@ import PosterGrid from "../../components/PosterGrid";
 export default function SeriesPage() {
   const [series, setSeries] = useState<Series[] | null>(null);
   const [library, setLibrary] = useState<Library | null>(null);
+
+  async function enrichAllSeries() {
+    if (!series) return;
+    await Promise.all(series.map((s) => enrichSeries(s.id)));
+  }
 
   async function loadSeries() {
     try {
@@ -32,6 +39,16 @@ export default function SeriesPage() {
       setSeries([]);
     }
   }
+
+  useEffect(() => {
+    if (series && series.length > 0) {
+      registerEnrichHandler(enrichAllSeries);
+    } else {
+      registerEnrichHandler(null);
+    }
+
+    return () => registerEnrichHandler(null);
+  }, [series]);
 
   // Initial load (mount only)
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
 
 import { useScanActions } from "../hooks/useScanActions";
+import { triggerEnrich, hasEnrichHandler } from "../state/enrichActions";
 
 export default function TopBar() {
   const { fullScan, incrementalScan } = useScanActions();
@@ -19,7 +20,9 @@ export default function TopBar() {
           <Button color="inherit" onClick={incrementalScan}>
             Incr. Scan
           </Button>
-          <Button color="inherit">Enrichment</Button>
+          <Button color="inherit" onClick={triggerEnrich}>
+            Enrich
+          </Button>
           <Button color="inherit">⚙</Button>
         </Box>
       </Toolbar>
