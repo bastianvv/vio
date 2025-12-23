@@ -9,3 +9,15 @@ export async function apiGet<T>(path: string): Promise<T> {
 
   return res.json();
 }
+
+export async function apiPost<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status}`);
+  }
+
+  return res.json();
+}
