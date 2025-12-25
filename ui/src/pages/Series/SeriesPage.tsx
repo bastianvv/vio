@@ -7,11 +7,13 @@ import type { Series } from "../../api/series";
 import type { Library } from "../../api/libraries";
 import { enrichSeries } from "../../api/enrich";
 import { registerEnrichHandler } from "../../state/enrichActions";
+import { useNavigate } from "react-router-dom";
 
 import { onScanFinished } from "../../state/scanEvents";
 import PosterGrid from "../../components/PosterGrid";
 
 export default function SeriesPage() {
+  const navigate = useNavigate();
   const [series, setSeries] = useState<Series[] | null>(null);
   const [library, setLibrary] = useState<Library | null>(null);
 
@@ -107,13 +109,18 @@ export default function SeriesPage() {
         Series
       </Typography>
 
-      <PosterGrid
-        items={series.map((s) => ({
-          id: s.id,
-          title: s.title,
-          posterUrl: s.has_poster ? `/api/images/series/${s.id}/poster` : null,
-        }))}
-      />
+      <Box sx={{ px: 3, py: 2 }}>
+        <PosterGrid
+          items={series.map((s) => ({
+            id: s.id,
+            title: s.title,
+            posterUrl: s.has_poster
+              ? `/api/images/series/${s.id}/poster`
+              : null,
+          }))}
+          onItemClick={(id) => navigate(`/series/${id}`)}
+        />
+      </Box>
     </>
   );
 }

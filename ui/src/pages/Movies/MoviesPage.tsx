@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { CircularProgress, Typography, Box } from "@mui/material";
-
+import { useNavigate } from "react-router-dom";
 import { getLibraries } from "../../api/libraries";
 import { getMovies } from "../../api/movies";
 import type { Movie } from "../../api/movies";
@@ -11,6 +11,7 @@ import { onScanFinished } from "../../state/scanEvents";
 import PosterGrid from "../../components/PosterGrid";
 
 export default function MoviesPage() {
+  const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[] | null>(null);
   const [library, setLibrary] = useState<Library | null>(null);
 
@@ -105,14 +106,22 @@ export default function MoviesPage() {
       <Typography variant="h4" sx={{ mb: 2 }}>
         Movies
       </Typography>
-
-      <PosterGrid
-        items={movies.map((m) => ({
-          id: m.id,
-          title: m.title,
-          posterUrl: m.has_poster ? `/api/images/movies/${m.id}/poster` : null,
-        }))}
-      />
+      <Box sx={{ px: 3, py: 2 }}>
+        <PosterGrid
+          items={movies.map((m) => ({
+            id: m.id,
+            title: m.title,
+            posterUrl: m.has_poster
+              ? `/api/images/movies/${m.id}/poster`
+              : null,
+          }))}
+          onItemClick={(id) =>
+            navigate(`/movies/${id}`, {
+              state: { libraryId: library.id },
+            })
+          }
+        />
+      </Box>
     </>
   );
 }
