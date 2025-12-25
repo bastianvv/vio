@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/bastianvv/vio/internal/http/dto"
@@ -32,21 +33,37 @@ func (h *FilesHandler) GetFile(w http.ResponseWriter, r *http.Request) {
 
 func (h *FilesHandler) StreamFile(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
-	id, _ := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
 
 	mf, err := h.store.GetMediaFile(id)
-	if err != nil {
-		http.Error(w, "file not found", 404)
+	if err != nil || mf == nil {
+		http.Error(w, "file not found", http.StatusNotFound)
 		return
 	}
 
 	f, err := os.Open(mf.Path)
 	if err != nil {
-		http.Error(w, "cannot open file", 500)
+		http.Error(w, "cannot open file", http.StatusNotFound)
 		return
 	}
-	defer func() { _ = f.Close() }()
+	defer f.Close()
 
-	w.Header().Set("Content-Type", "video/"+mf.Container)
-	http.ServeContent(w, r, mf.Path, mf.UpdatedAt, f)
+	stat, err := f.Stat()
+	if err != nil {
+		http.Error(w, "cannot stat file", http.StatusInternalServerError)
+		return
+	}
+
+	// IMPORTANT: do NOT set Content-Type manually
+	http.ServeContent(
+		w,
+		r,
+		filepath.Base(mf.Path), // correct name
+		stat.ModTime(),         // better than mf.UpdatedAt
+		f,
+	)
 }
