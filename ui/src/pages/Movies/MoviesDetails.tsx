@@ -124,7 +124,11 @@ export default function MovieDetails() {
 
                 <Typography sx={{ mt: 2 }}>{movie.overview}</Typography>
 
-                <Button variant="contained" sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  sx={{ mt: 3 }}
+                  onClick={() => navigate(`/player/${movie.id}`)}
+                >
                   ▶ Play
                 </Button>
               </Box>

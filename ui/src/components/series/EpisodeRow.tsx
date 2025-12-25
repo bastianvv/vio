@@ -6,6 +6,10 @@ type Props = {
 };
 
 export default function EpisodeRow({ episode, onPlay }: Props) {
+  const handlePlay = () => {
+    onPlay?.(episode.id);
+  };
+
   return (
     <div
       style={{
@@ -16,7 +20,7 @@ export default function EpisodeRow({ episode, onPlay }: Props) {
         borderBottom: "1px solid #333",
         cursor: "pointer",
       }}
-      onClick={() => onPlay?.(episode.id)}
+      onClick={handlePlay}
     >
       <div>
         <strong>Ep {episode.number}</strong> – {episode.title}
@@ -25,7 +29,7 @@ export default function EpisodeRow({ episode, onPlay }: Props) {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onPlay?.(episode.id);
+          handlePlay();
         }}
       >
         ▶

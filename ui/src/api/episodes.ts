@@ -1,5 +1,6 @@
 // src/api/episodes.ts
 import { apiGet } from "./client";
+import type { MediaFile } from "./mediafiles";
 
 export interface Episode {
   id: number;
@@ -19,4 +20,8 @@ export async function getEpisodesBySeason(
 
 export async function getEpisode(id: number): Promise<Episode> {
   return apiGet<Episode>(`/episodes/${id}`);
+}
+
+export async function getEpisodeFiles(id: number): Promise<MediaFile[]> {
+  return apiGet<MediaFile[]>(`/episodes/${id}/files`);
 }
