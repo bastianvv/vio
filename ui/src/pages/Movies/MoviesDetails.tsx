@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Button } from "@mui/material";
 
 import TopBar from "../../app/TopBar";
-import { getMovieById } from "../../api/movies";
+import { getMovieById, getMovieFiles } from "../../api/movies";
 import type { Movie } from "../../api/movies";
 
 export default function MovieDetails() {
@@ -34,6 +34,25 @@ export default function MovieDetails() {
     return <div>Loading…</div>;
   }
 
+  const currentMovie = movie;
+
+  async function handlePlayMovie() {
+    try {
+      const files = await getMovieFiles(currentMovie.id);
+      const file = files.find((f) => !f.is_missing);
+
+      if (!file) {
+        alert("No playable file found for this movie");
+        return;
+      }
+
+      navigate(`/player/${file.id}`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load movie media");
+    }
+  }
+
   return (
     <>
       <TopBar
@@ -42,15 +61,15 @@ export default function MovieDetails() {
             ← Back
           </Button>
         }
-        title={movie.title}
+        title={currentMovie.title}
       />
 
       {/* Backdrop container */}
       <Box
         sx={{
           minHeight: "100vh",
-          backgroundImage: movie.has_backdrop
-            ? `url(/api/images/movies/${movie.id}/backdrop)`
+          backgroundImage: currentMovie.has_backdrop
+            ? `url(/api/images/movies/${currentMovie.id}/backdrop)`
             : undefined,
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -90,11 +109,11 @@ export default function MovieDetails() {
                 color: "#fff",
               }}
             >
-              {movie.has_poster && (
+              {currentMovie.has_poster && (
                 <Box
                   component="img"
-                  src={`/api/images/movies/${movie.id}/poster`}
-                  alt={movie.title}
+                  src={`/api/images/movies/${currentMovie.id}/poster`}
+                  alt={currentMovie.title}
                   sx={{
                     width: 200,
                     borderRadius: 1,
@@ -105,29 +124,29 @@ export default function MovieDetails() {
 
               <Box>
                 <Typography variant="h4" fontWeight="bold">
-                  {movie.title}
+                  {currentMovie.title}
                 </Typography>
 
-                {movie.original_title &&
-                  movie.original_title !== movie.title && (
+                {currentMovie.original_title &&
+                  currentMovie.original_title !== currentMovie.title && (
                     <Typography
                       variant="subtitle1"
                       sx={{ fontStyle: "italic", opacity: 0.85 }}
                     >
-                      {movie.original_title}
+                      {currentMovie.original_title}
                     </Typography>
                   )}
 
                 <Typography sx={{ mt: 1, opacity: 0.8 }}>
-                  {movie.year}
+                  {currentMovie.year}
                 </Typography>
 
-                <Typography sx={{ mt: 2 }}>{movie.overview}</Typography>
+                <Typography sx={{ mt: 2 }}>{currentMovie.overview}</Typography>
 
                 <Button
                   variant="contained"
                   sx={{ mt: 3 }}
-                  onClick={() => navigate(`/player/${movie.id}`)}
+                  onClick={handlePlayMovie}
                 >
                   ▶ Play
                 </Button>

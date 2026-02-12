@@ -1,4 +1,5 @@
 import { apiGet } from "./client";
+import type { MediaFile } from "./mediafiles";
 
 export interface Movie {
   library_id: number;
@@ -20,4 +21,8 @@ export function getMovieById(
   libraryId: number,
 ): Promise<Movie> {
   return apiGet<Movie>(`/movies/${movieId}?library_id=${libraryId}`);
+}
+
+export function getMovieFiles(movieId: number): Promise<MediaFile[]> {
+  return apiGet<MediaFile[]>(`/movies/${movieId}/files`);
 }
