@@ -6,6 +6,7 @@ import MoviesPage from "../pages/Movies/MoviesPage";
 import MovieDetails from "../pages/Movies/MoviesDetails";
 import SeriesPage from "../pages/Series/SeriesPage";
 import SeriesDetails from "../pages/Series/SeriesDetails";
+import EpisodeDetails from "../pages/Episodes/EpisodeDetails";
 import VideoPlayer from "../components/player/VideoPlayer";
 
 export default function AppRoutes() {
@@ -20,6 +21,7 @@ export default function AppRoutes() {
       <Route path="/movies/:id" element={<MovieDetails />} />
       <Route path="/series" element={<SeriesPage />} />
       <Route path="/series/:id" element={<SeriesDetails />} />
+      <Route path="/episodes/:id" element={<EpisodeDetails />} />
       <Route path="/player/:fileId" element={<VideoPlayer />} />
 
       {/* Fallback */}

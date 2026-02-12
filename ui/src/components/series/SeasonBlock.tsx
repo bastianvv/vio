@@ -29,6 +29,12 @@ export default function SeasonBlock({ season, episodes }: Props) {
     }
   }
 
+  function handleEpisodeDetails(episodeId: number) {
+    navigate(`/episodes/${episodeId}`, {
+      state: { seriesId: season.series_id },
+    });
+  }
+
   if (episodes.length === 0) {
     return null;
   }
@@ -56,6 +62,7 @@ export default function SeasonBlock({ season, episodes }: Props) {
               key={episode.id}
               episode={episode}
               onPlay={handlePlayEpisode}
+              onDetails={handleEpisodeDetails}
             />
           ))}
         </div>

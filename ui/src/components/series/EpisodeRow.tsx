@@ -3,11 +3,16 @@ import type { Episode } from "../../api/episodes";
 type Props = {
   episode: Episode;
   onPlay?: (episodeId: number) => void;
+  onDetails?: (episodeId: number) => void;
 };
 
-export default function EpisodeRow({ episode, onPlay }: Props) {
+export default function EpisodeRow({ episode, onPlay, onDetails }: Props) {
   const handlePlay = () => {
     onPlay?.(episode.id);
+  };
+
+  const handleDetails = () => {
+    onDetails?.(episode.id);
   };
 
   return (
@@ -26,14 +31,25 @@ export default function EpisodeRow({ episode, onPlay }: Props) {
         <strong>Ep {episode.number}</strong> – {episode.title}
       </div>
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handlePlay();
-        }}
-      >
-        ▶
-      </button>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePlay();
+          }}
+        >
+          ▶
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDetails();
+          }}
+        >
+          Details
+        </button>
+      </div>
     </div>
   );
 }
