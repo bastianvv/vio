@@ -58,6 +58,9 @@ type Store interface {
 	// Subtitles
 	CreateSubtitleTrack(st *domain.SubtitleTrack) error
 	ListSubtitleTracks(mediaFileID int64) ([]domain.SubtitleTrack, error)
+	GetSubtitleTrack(id int64) (*domain.SubtitleTrack, error)
+	CreateAudioTrack(at *domain.AudioTrack) error
+	ListAudioTracks(mediaFileID int64) ([]domain.AudioTrack, error)
 
 	// Cleanup
 	CleanupMissingMediaFileLinks(libraryID int64) (int64, error)

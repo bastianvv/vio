@@ -9,6 +9,7 @@ type SubtitleTrack struct {
 	Format    string `json:"format,omitempty"`
 	IsForced  bool   `json:"is_forced"`
 	IsDefault bool   `json:"is_default"`
+	StreamURL string `json:"stream_url,omitempty"`
 
 	// Only for embedded subtitles
 	StreamIndex *int `json:"stream_index,omitempty"`
@@ -17,7 +18,7 @@ type SubtitleTrack struct {
 	External bool `json:"external"`
 }
 
-func NewSubtitleTrack(st *domain.SubtitleTrack) *SubtitleTrack {
+func NewSubtitleTrack(st *domain.SubtitleTrack, streamURL string) *SubtitleTrack {
 	if st == nil {
 		return nil
 	}
@@ -29,6 +30,7 @@ func NewSubtitleTrack(st *domain.SubtitleTrack) *SubtitleTrack {
 		Format:      st.Format,
 		IsForced:    st.IsForced,
 		IsDefault:   st.IsDefault,
+		StreamURL:   streamURL,
 		StreamIndex: st.StreamIndex,
 		External:    st.Source == domain.SubtitleSourceExternal,
 	}

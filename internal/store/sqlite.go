@@ -1217,6 +1217,71 @@ func (s *SQLiteStore) ListSubtitleTracks(mediaFileID int64) ([]domain.SubtitleTr
 	return list, rows.Err()
 }
 
+func (s *SQLiteStore) GetSubtitleTrack(id int64) (*domain.SubtitleTrack, error) {
+	row := s.exec.QueryRow(`
+        SELECT id, media_file_id, source, external_path, stream_index, language,
+               is_forced, is_default, format
+        FROM subtitle_tracks
+        WHERE id = ?
+        LIMIT 1
+    `, id)
+
+	var st domain.SubtitleTrack
+	err := row.Scan(
+		&st.ID, &st.MediaFileID, &st.Source, &st.ExternalPath, &st.StreamIndex,
+		&st.Language, &st.IsForced, &st.IsDefault, &st.Format,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &st, nil
+}
+
+func (s *SQLiteStore) CreateAudioTrack(at *domain.AudioTrack) error {
+	res, err := s.exec.Exec(`
+        INSERT OR REPLACE INTO audio_tracks (
+            media_file_id, stream_index, language, codec, channels, is_default
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    `, at.MediaFileID, at.StreamIndex, at.Language, at.Codec, at.Channels, at.IsDefault)
+	if err != nil {
+		return err
+	}
+
+	id, _ := res.LastInsertId()
+	at.ID = id
+	return nil
+}
+
+func (s *SQLiteStore) ListAudioTracks(mediaFileID int64) ([]domain.AudioTrack, error) {
+	rows, err := s.exec.Query(`
+        SELECT id, media_file_id, stream_index, language, codec, channels, is_default
+        FROM audio_tracks
+        WHERE media_file_id = ?
+        ORDER BY stream_index
+    `, mediaFileID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var list []domain.AudioTrack
+	for rows.Next() {
+		var at domain.AudioTrack
+		if err := rows.Scan(
+			&at.ID, &at.MediaFileID, &at.StreamIndex, &at.Language,
+			&at.Codec, &at.Channels, &at.IsDefault,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, at)
+	}
+	return list, rows.Err()
+}
+
 // ============================================================================
 // Clean-up
 // ============================================================================

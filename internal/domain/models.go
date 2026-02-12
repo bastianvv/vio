@@ -123,3 +123,13 @@ type SubtitleTrack struct {
 	IsDefault    bool           `json:"is_default"`
 	Format       string         `json:"format"`
 }
+
+type AudioTrack struct {
+	ID          int64  `json:"id"`
+	MediaFileID int64  `json:"media_file_id"`
+	StreamIndex int    `json:"stream_index"`
+	Language    string `json:"language"`
+	Codec       string `json:"codec"`
+	Channels    int    `json:"channels"`
+	IsDefault   bool   `json:"is_default"`
+}

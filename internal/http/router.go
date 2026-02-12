@@ -57,9 +57,11 @@ func NewRouter(s store.Store, enricher metadata.Enricher, imageBaseDir string) h
 	// ---- Files ----
 	r.Get("/api/files/{id}", filesHandler.GetFile)
 	r.Get("/api/files/{id}/stream", filesHandler.StreamFile)
+	r.Get("/api/files/{id}/audio-tracks", filesHandler.ListAudioTracks)
 
 	// --- Subtitles ---
 	r.Get("/api/files/{id}/subtitles", subtitlesHandler.ListSubtitleTracks)
+	r.Get("/api/subtitles/{id}/stream", subtitlesHandler.StreamSubtitleTrack)
 
 	// --- Scanner ---
 	r.Get("/api/scans/{job_id}", librariesHandler.GetScanJob)

@@ -67,3 +67,26 @@ func (h *FilesHandler) StreamFile(w http.ResponseWriter, r *http.Request) {
 		f,
 	)
 }
+
+func (h *FilesHandler) ListAudioTracks(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	mediaFileID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid media file id", http.StatusBadRequest)
+		return
+	}
+
+	tracks, err := h.store.ListAudioTracks(mediaFileID)
+	if err != nil {
+		http.Error(w, "failed to list audio tracks", http.StatusInternalServerError)
+		return
+	}
+
+	out := make([]*dto.AudioTrack, 0, len(tracks))
+	for i := range tracks {
+		out = append(out, dto.NewAudioTrack(&tracks[i]))
+	}
+
+	w.WriteHeader(http.StatusOK)
+	writeJSON(w, out)
+}

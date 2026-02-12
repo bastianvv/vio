@@ -278,6 +278,10 @@ func (s *FSScanner) processVideoFileTx(
 		}
 	}
 
+	if err := s.createAudioTracksTx(tx, mf, ffdata); err != nil {
+		return err
+	}
+
 	return s.createSubtitleTracksTx(tx, mf, ffdata)
 }
 
@@ -499,6 +503,53 @@ func (s *FSScanner) attachSeriesEpisodeTx(
 	}
 
 	return []*domain.Episode{ep}, ar, nil
+}
+
+// createAudioTracks stores embedded audio stream metadata.
+func (s *FSScanner) createAudioTracks(mf *domain.MediaFile, ffdata *FFProbeOutput) error {
+	for _, st := range ffdata.Streams {
+		if st.CodecType != "audio" {
+			continue
+		}
+
+		track := &domain.AudioTrack{
+			MediaFileID: mf.ID,
+			StreamIndex: st.Index,
+			Language:    strings.TrimSpace(st.Tags.Language),
+			Codec:       st.CodecName,
+			Channels:    st.Channels,
+			IsDefault:   st.Disposition.Default == 1,
+		}
+
+		if err := s.store.CreateAudioTrack(track); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *FSScanner) createAudioTracksTx(tx store.Store, mf *domain.MediaFile, ffdata *FFProbeOutput) error {
+	for _, st := range ffdata.Streams {
+		if st.CodecType != "audio" {
+			continue
+		}
+
+		track := &domain.AudioTrack{
+			MediaFileID: mf.ID,
+			StreamIndex: st.Index,
+			Language:    strings.TrimSpace(st.Tags.Language),
+			Codec:       st.CodecName,
+			Channels:    st.Channels,
+			IsDefault:   st.Disposition.Default == 1,
+		}
+
+		if err := tx.CreateAudioTrack(track); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // createSubtitleTracks stores both embedded and external subtitles.
